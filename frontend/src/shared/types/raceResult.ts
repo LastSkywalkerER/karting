@@ -44,3 +44,19 @@ export interface UpdateTeamKartStatusRequest {
   updates: Array<{ teamNumber: string; kartStatus: number }>;
 }
 
+export interface PitlaneKartStatus {
+  pitlaneNumber: number;
+  kartStatus: number;
+}
+
+export interface PitlaneKartStatusResponse {
+  success: boolean;
+  count: number;
+  data: PitlaneKartStatus[];
+  error?: string;
+}
+
+export interface UpdatePitlaneKartStatusRequest {
+  updates: Array<{ pitlaneNumber: number; kartStatus: number }>;
+}
+

@@ -14,6 +14,10 @@ export function createRaceResultRoutes(controller: RaceResultController): Router
   router.get('/teams/kart-status', (req, res) => controller.getTeamKartStatuses(req, res));
   router.put('/teams/kart-status', (req, res) => controller.updateTeamKartStatuses(req, res));
 
+  // Pitlane kart status routes
+  router.get('/pitlanes/kart-status', (req, res) => controller.getPitlaneKartStatuses(req, res));
+  router.put('/pitlanes/kart-status', (req, res) => controller.updatePitlaneKartStatuses(req, res));
+
   return router;
 }
 

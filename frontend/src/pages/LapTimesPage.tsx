@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchLapTimesTable, fetchTeamKartStatuses, updateTeamKartStatuses } from '@/shared/api/raceResultsApi';
-import type { LapTimesTableResponse, TeamKartStatus } from '@/shared/types/raceResult';
+import { fetchLapTimesTable, fetchTeamKartStatuses, updateTeamKartStatuses, fetchPitlaneKartStatuses, updatePitlaneKartStatuses } from '@/shared/api/raceResultsApi';
+import type { LapTimesTableResponse, TeamKartStatus, PitlaneKartStatus } from '@/shared/types/raceResult';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import { Dialog } from 'primereact/dialog';
 
 interface LapTimesPageProps {
   sessionId: string;
@@ -25,6 +26,12 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
   const [teamKartStatuses, setTeamKartStatuses] = useState<Map<string, number>>(new Map());
   const [openPaletteForTeam, setOpenPaletteForTeam] = useState<string | null>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
+  
+  // Pitlane modal states
+  const [pitlaneStatuses, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
+  const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number }>>([]);
+  const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number } | null>(null);
+  const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
 
   // Load team kart statuses
   useEffect(() => {
@@ -44,6 +51,26 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     };
 
     loadStatuses();
+  }, []);
+
+  // Load pitlane kart statuses
+  useEffect(() => {
+    const loadPitlaneStatuses = async () => {
+      try {
+        const response = await fetchPitlaneKartStatuses();
+        if (response.success) {
+          const statusMap = new Map<number, number>();
+          response.data.forEach((status: PitlaneKartStatus) => {
+            statusMap.set(status.pitlaneNumber, status.kartStatus);
+          });
+          setPitlaneStatuses(statusMap);
+        }
+      } catch (err) {
+        console.error('Failed to load pitlane kart statuses:', err);
+      }
+    };
+
+    loadPitlaneStatuses();
   }, []);
 
   // Handle click outside palette to close it
@@ -105,6 +132,111 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
       clearInterval(intervalId);
     };
   }, [sessionId]);
+
+  // Detect "IN PIT" on last non-empty lap for each team
+  useEffect(() => {
+    if (!tableData || tableData.data.length === 0) return;
+
+    const newTeamsInPit: Array<{ teamNumber: string; kartStatus: number }> = [];
+
+    // Check each competitor
+    tableData.competitorNumbers.forEach((competitorNumber) => {
+      // Skip if already processed
+      if (processedTeams.has(competitorNumber)) return;
+
+      const competitorIndex = tableData.competitorNumbers.indexOf(competitorNumber);
+      
+      // Find first non-empty lap (last lap chronologically, since lapNumbers is sorted descending)
+      for (let lapIndex = 0; lapIndex < tableData.data.length; lapIndex++) {
+        const value = tableData.data[lapIndex]?.[competitorIndex];
+        
+        if (value !== null && value !== undefined && value !== '') {
+          // Check if it's "IN PIT"
+          const valueStr = String(value).trim().toUpperCase();
+          if (valueStr === 'IN PIT') {
+            const kartStatus = teamKartStatuses.get(competitorNumber) || 1;
+            newTeamsInPit.push({ teamNumber: competitorNumber, kartStatus });
+          }
+          break; // Found first non-empty lap, no need to continue
+        }
+      }
+    });
+
+    // Add new teams to queue if any
+    if (newTeamsInPit.length > 0) {
+      setPitlaneModalQueue((prevQueue) => {
+        // Filter out duplicates
+        const existingTeamNumbers = new Set(prevQueue.map(item => item.teamNumber));
+        const newItems = newTeamsInPit.filter(item => !existingTeamNumbers.has(item.teamNumber));
+        
+        if (newItems.length === 0) return prevQueue;
+        
+        return [...prevQueue, ...newItems];
+      });
+    }
+  }, [tableData, teamKartStatuses, processedTeams]);
+
+  // Process queue: show next modal if none is open
+  useEffect(() => {
+    if (currentPitlaneModal === null && pitlaneModalQueue.length > 0) {
+      const nextTeam = pitlaneModalQueue[0];
+      setCurrentPitlaneModal(nextTeam);
+      setPitlaneModalQueue((prevQueue) => prevQueue.slice(1));
+    }
+  }, [currentPitlaneModal, pitlaneModalQueue]);
+
+  // Handle pitlane selection
+  const handlePitlaneSelection = async (pitlaneNumber: number) => {
+    if (!currentPitlaneModal) return;
+
+    try {
+      // Load current pitlane statuses
+      const response = await fetchPitlaneKartStatuses();
+      if (response.success) {
+        // Create a map of existing pitlanes
+        const existingPitlanesMap = new Map<number, number>();
+        response.data.forEach((status: PitlaneKartStatus) => {
+          existingPitlanesMap.set(status.pitlaneNumber, status.kartStatus);
+        });
+
+        // Create updates array with all existing pitlanes, updating the selected one
+        const updates: Array<{ pitlaneNumber: number; kartStatus: number }> = [];
+        
+        // Add all existing pitlanes (1-4), updating the selected one
+        for (let i = 1; i <= 4; i++) {
+          if (i === pitlaneNumber) {
+            // Update selected pitlane with team's kart status
+            updates.push({
+              pitlaneNumber: i,
+              kartStatus: currentPitlaneModal.kartStatus
+            });
+          } else {
+            // Keep existing status or default to 1 if doesn't exist
+            updates.push({
+              pitlaneNumber: i,
+              kartStatus: existingPitlanesMap.get(i) || 1
+            });
+          }
+        }
+
+        // Send update to API
+        await updatePitlaneKartStatuses({ updates });
+
+        // Update local state
+        const updatedStatuses = new Map(pitlaneStatuses);
+        updatedStatuses.set(pitlaneNumber, currentPitlaneModal.kartStatus);
+        setPitlaneStatuses(updatedStatuses);
+
+        // Mark team as processed
+        setProcessedTeams((prev) => new Set(prev).add(currentPitlaneModal.teamNumber));
+
+        // Close current modal
+        setCurrentPitlaneModal(null);
+      }
+    } catch (err) {
+      console.error('Failed to update pitlane kart statuses:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -228,8 +360,13 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
       style={{ minWidth: '120px', textAlign: 'center' }}
         body={(rowData: Record<string, string | number | null>) => {
         const value = rowData[competitorNumber];
+        const valueStr = value ? String(value).trim().toUpperCase() : '';
+        const isInPit = valueStr === 'IN PIT';
+        
         return value ? (
-          <span className="font-mono text-sm">{value as string}</span>
+          <span className={`font-mono text-sm ${isInPit ? 'font-bold text-red-600 bg-red-50 px-2 py-1 rounded' : ''}`}>
+            {value as string}
+          </span>
         ) : (
           <span className="text-gray-400">-</span>
         );
@@ -282,6 +419,40 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
         {competitorColumns}
         </DataTable>
       </div>
+
+      {/* Pitlane Selection Modal */}
+      <Dialog
+        visible={currentPitlaneModal !== null}
+        onHide={() => {}} // Prevent closing by clicking outside
+        modal
+        header={`Выберите питлейн команды ${currentPitlaneModal?.teamNumber}`}
+        className="p-dialog-sm"
+        pt={{
+          root: { className: 'z-50' },
+          header: { className: 'bg-blue-600 text-white' },
+          headerTitle: { className: 'text-white font-semibold' },
+          content: { className: 'p-6' }
+        }}
+        closable={false}
+        draggable={false}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-gray-700 mb-2">
+            Выберите номер питлейна для команды {currentPitlaneModal?.teamNumber}
+          </p>
+          <div className="flex gap-3 justify-center">
+            {[1, 2, 3, 4].map((pitlaneNumber) => (
+              <button
+                key={pitlaneNumber}
+                onClick={() => handlePitlaneSelection(pitlaneNumber)}
+                className="w-16 h-16 bg-blue-600 text-white font-bold text-xl rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md hover:shadow-lg"
+              >
+                {pitlaneNumber}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

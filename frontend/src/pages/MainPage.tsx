@@ -1,11 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { RaceResultsPage } from './RaceResultsPage';
 import { LapTimesPage } from './LapTimesPage';
+import { fetchPitlaneKartStatuses } from '@/shared/api/raceResultsApi';
+import type { PitlaneKartStatus } from '@/shared/types/raceResult';
+
+// Color mapping for kart statuses
+const KART_STATUS_COLORS: Record<number, string> = {
+  1: '#22c55e', // green
+  2: '#eab308', // yellow
+  3: '#f97316', // orange
+  4: '#ef4444', // red
+  5: '#000000', // black
+};
 
 export function MainPage() {
   const [sessionId, setSessionId] = useState('0409BF1AD0B97F05-2147486933-1073748974');
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const [pitlaneStatuses, setPitlaneStatuses] = useState<PitlaneKartStatus[]>([]);
+
+  // Load pitlane kart statuses
+  useEffect(() => {
+    const loadPitlaneStatuses = async () => {
+      try {
+        const response = await fetchPitlaneKartStatuses();
+        if (response.success) {
+          // Sort by pitlaneNumber ascending
+          const sorted = [...response.data].sort((a, b) => a.pitlaneNumber - b.pitlaneNumber);
+          setPitlaneStatuses(sorted);
+        }
+      } catch (err) {
+        console.error('Failed to load pitlane kart statuses:', err);
+      }
+    };
+
+    loadPitlaneStatuses();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,7 +44,7 @@ export function MainPage() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      <div className="flex-shrink-0 px-4 py-4 bg-white border-b border-gray-200">
+      <div className="shrink-0 px-4 py-4 bg-white border-b border-gray-200">
         <div className="mb-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Race Statistics</h1>
           <p className="text-gray-600">View race results and lap times analysis</p>
@@ -43,6 +73,23 @@ export function MainPage() {
             </button>
           </div>
         </form>
+
+        {/* Pitlane status display */}
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">Pitlanes:</span>
+          <div className="flex gap-2">
+            {pitlaneStatuses.map((pitlane) => (
+              <div
+                key={pitlane.pitlaneNumber}
+                className="w-12 h-12 rounded border-2 border-gray-300 flex items-center justify-center font-bold text-white shadow-sm"
+                style={{ backgroundColor: KART_STATUS_COLORS[pitlane.kartStatus] || '#gray' }}
+                title={`Pitlane ${pitlane.pitlaneNumber} - Status ${pitlane.kartStatus}`}
+              >
+                {pitlane.pitlaneNumber}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 bg-white overflow-hidden">

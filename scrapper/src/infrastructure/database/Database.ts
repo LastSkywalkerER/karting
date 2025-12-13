@@ -49,6 +49,20 @@ export class DatabaseConnection {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_team_number ON team_kart_status(team_number);
     `);
+
+    // Create pitlane_kart_status table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS pitlane_kart_status (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pitlane_number INTEGER NOT NULL UNIQUE CHECK(pitlane_number >= 1 AND pitlane_number <= 4),
+        kart_status INTEGER NOT NULL CHECK(kart_status >= 1 AND kart_status <= 5)
+      )
+    `);
+
+    // Create index for pitlane_number
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_pitlane_number ON pitlane_kart_status(pitlane_number);
+    `);
   }
 
   getDatabase(): Database.Database {

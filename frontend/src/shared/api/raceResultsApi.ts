@@ -1,4 +1,4 @@
-import type { RaceResultsResponse, LapTimesTableResponse, TeamKartStatusResponse, UpdateTeamKartStatusRequest } from '../types/raceResult';
+import type { RaceResultsResponse, LapTimesTableResponse, TeamKartStatusResponse, UpdateTeamKartStatusRequest, PitlaneKartStatusResponse, UpdatePitlaneKartStatusRequest } from '../types/raceResult';
 
 const API_BASE_URL = '/api';
 
@@ -37,6 +37,34 @@ export async function fetchTeamKartStatuses(): Promise<TeamKartStatusResponse> {
 
 export async function updateTeamKartStatuses(request: UpdateTeamKartStatusRequest): Promise<{ success: boolean; message?: string; error?: string }> {
   const response = await fetch(`${API_BASE_URL}/teams/kart-status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+export async function fetchPitlaneKartStatuses(): Promise<PitlaneKartStatusResponse> {
+  const response = await fetch(`${API_BASE_URL}/pitlanes/kart-status`);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+export async function updatePitlaneKartStatuses(request: UpdatePitlaneKartStatusRequest): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await fetch(`${API_BASE_URL}/pitlanes/kart-status`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
