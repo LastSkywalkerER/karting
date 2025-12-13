@@ -198,9 +198,9 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     const textColor = currentStatus === 5 ? 'text-white' : currentStatus === 1 ? 'text-white' : 'text-gray-900';
 
     return (
-      <Column
-        key={competitorNumber}
-        field={competitorNumber}
+    <Column
+      key={competitorNumber}
+      field={competitorNumber}
         header={
           <div className="relative w-full h-full flex items-center justify-center">
             <div
@@ -225,16 +225,16 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
             style: { backgroundColor: bgColor, padding: 0 }
           }
         }}
-        style={{ minWidth: '120px', textAlign: 'center' }}
+      style={{ minWidth: '120px', textAlign: 'center' }}
         body={(rowData: Record<string, string | number | null>) => {
-          const value = rowData[competitorNumber];
-          return value ? (
-            <span className="font-mono text-sm">{value as string}</span>
-          ) : (
-            <span className="text-gray-400">-</span>
-          );
-        }}
-      />
+        const value = rowData[competitorNumber];
+        return value ? (
+          <span className="font-mono text-sm">{value as string}</span>
+        ) : (
+          <span className="text-gray-400">-</span>
+        );
+      }}
+    />
     );
   });
 

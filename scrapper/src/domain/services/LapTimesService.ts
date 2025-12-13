@@ -25,7 +25,10 @@ export class LapTimesService implements ILapTimesService {
       }
     }
 
-    const lapNumbers = Array.from(lapNumbersSet).sort((a, b) => a - b);
+    // Sort lap numbers in descending order (highest lap number first)
+    const lapNumbers = Array.from(lapNumbersSet).sort((a, b) => b - a);
+    
+    // Initially sort competitor numbers (will be re-sorted later by number of laps)
     const competitorNumbers = Array.from(competitorNumbersSet).sort((a, b) => {
       // Try to sort as numbers if possible, otherwise as strings
       const numA = parseInt(a, 10);
@@ -56,6 +59,36 @@ export class LapTimesService implements ILapTimesService {
       }
     }
 
+    // Find maximum laps value for each competitor from original results
+    const competitorMaxLaps = new Map<string, number>();
+    for (const result of results) {
+      if (result.competitorNumber === null || result.competitorNumber === undefined) continue;
+      if (result.laps === null || result.laps === undefined) continue;
+      
+      const currentMax = competitorMaxLaps.get(result.competitorNumber) || 0;
+      if (result.laps > currentMax) {
+        competitorMaxLaps.set(result.competitorNumber, result.laps);
+      }
+    }
+
+    // Sort competitor numbers by maximum laps value (descending), then by competitor number if equal
+    const sortedCompetitorNumbers = [...competitorNumbers].sort((a, b) => {
+      const maxLapsA = competitorMaxLaps.get(a) || 0;
+      const maxLapsB = competitorMaxLaps.get(b) || 0;
+      
+      if (maxLapsB !== maxLapsA) {
+        return maxLapsB - maxLapsA; // Descending order
+      }
+      
+      // If equal max laps, sort by competitor number
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return a.localeCompare(b);
+    });
+
     // Build the matrix: data[lapIndex][competitorIndex] = lastLapTime
     const data: (string | null)[][] = [];
 
@@ -63,8 +96,8 @@ export class LapTimesService implements ILapTimesService {
       const lap = lapNumbers[lapIndex];
       const row: (string | null)[] = [];
 
-      for (let competitorIndex = 0; competitorIndex < competitorNumbers.length; competitorIndex++) {
-        const competitorNumber = competitorNumbers[competitorIndex];
+      for (let competitorIndex = 0; competitorIndex < sortedCompetitorNumbers.length; competitorIndex++) {
+        const competitorNumber = sortedCompetitorNumbers[competitorIndex];
         const key = `${lap}-${competitorNumber}`;
         const occurrence = firstOccurrenceMap.get(key);
 
@@ -76,7 +109,7 @@ export class LapTimesService implements ILapTimesService {
 
     return {
       lapNumbers,
-      competitorNumbers,
+      competitorNumbers: sortedCompetitorNumbers,
       data
     };
   }

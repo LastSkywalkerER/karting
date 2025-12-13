@@ -47,14 +47,14 @@ export function MainPage() {
 
       <div className="flex-1 bg-white overflow-hidden">
         <TabView className="custom-tabview h-full flex flex-col">
-          <TabPanel header="Race Results" leftIcon="pi pi-list">
-            <div className="h-full p-4 flex flex-col">
-              <RaceResultsPage sessionId={currentSessionId} />
-            </div>
-          </TabPanel>
           <TabPanel header="Lap Times Matrix" leftIcon="pi pi-table">
             <div className="h-full p-4 flex flex-col">
               <LapTimesPage sessionId={currentSessionId} />
+            </div>
+          </TabPanel>
+          <TabPanel header="Race Results" leftIcon="pi pi-list">
+            <div className="h-full p-4 flex flex-col">
+              <RaceResultsPage sessionId={currentSessionId} />
             </div>
           </TabPanel>
         </TabView>
