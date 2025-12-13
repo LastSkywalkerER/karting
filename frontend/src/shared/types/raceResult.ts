@@ -31,6 +31,7 @@ export interface LapTimesTableResponse {
 export interface TeamKartStatus {
   teamNumber: string;
   kartStatus: number;
+  lastPitLap?: number;
 }
 
 export interface TeamKartStatusResponse {
@@ -41,7 +42,7 @@ export interface TeamKartStatusResponse {
 }
 
 export interface UpdateTeamKartStatusRequest {
-  updates: Array<{ teamNumber: string; kartStatus: number }>;
+  updates: Array<{ teamNumber: string; kartStatus: number; lastPitLap?: number }>;
 }
 
 export interface PitlaneKartStatus {

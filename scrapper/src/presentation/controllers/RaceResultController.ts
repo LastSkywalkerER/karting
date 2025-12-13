@@ -137,7 +137,8 @@ export class RaceResultController {
         count: teams.length,
         data: teams.map(team => ({
           teamNumber: team.teamNumber,
-          kartStatus: team.kartStatus
+          kartStatus: team.kartStatus,
+          lastPitLap: team.lastPitLap
         }))
       });
     } catch (error) {
@@ -174,6 +175,13 @@ export class RaceResultController {
           res.status(400).json({
             success: false,
             error: 'Each update must have a kartStatus (number between 1 and 5)'
+          });
+          return;
+        }
+        if (update.lastPitLap !== undefined && (typeof update.lastPitLap !== 'number' || update.lastPitLap < 0)) {
+          res.status(400).json({
+            success: false,
+            error: 'lastPitLap must be a non-negative number if provided'
           });
           return;
         }

@@ -45,6 +45,13 @@ export class DatabaseConnection {
       )
     `);
 
+    // Add last_pit_lap column if it doesn't exist (for backward compatibility)
+    try {
+      this.db.exec(`ALTER TABLE team_kart_status ADD COLUMN last_pit_lap INTEGER`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+
     // Create index for team_number
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_team_number ON team_kart_status(team_number);

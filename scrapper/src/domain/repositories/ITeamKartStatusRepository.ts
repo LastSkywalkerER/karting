@@ -4,6 +4,6 @@ export interface ITeamKartStatusRepository {
   findAll(): TeamKartStatus[];
   findByTeamNumber(teamNumber: string): TeamKartStatus | null;
   save(teamKartStatus: TeamKartStatusEntity): void;
-  updateMany(updates: Array<{ teamNumber: string; kartStatus: number }>): void;
+  updateMany(updates: Array<{ teamNumber: string; kartStatus: number; lastPitLap?: number }>): void;
 }
 

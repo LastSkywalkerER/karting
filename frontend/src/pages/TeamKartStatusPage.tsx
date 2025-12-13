@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchLapTimesTable, fetchTeamKartStatuses, updateTeamKartStatuses, fetchPitlaneKartStatuses, updatePitlaneKartStatuses } from '@/shared/api/raceResultsApi';
-import type { LapTimesTableResponse, TeamKartStatus, PitlaneKartStatus } from '@/shared/types/raceResult';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
+import { fetchTeamKartStatuses, updateTeamKartStatuses, fetchLatestResults, fetchPitlaneKartStatuses, updatePitlaneKartStatuses } from '@/shared/api/raceResultsApi';
+import type { TeamKartStatus, PitlaneKartStatus, RaceResult } from '@/shared/types/raceResult';
 import { Dialog } from 'primereact/dialog';
 
-interface LapTimesPageProps {
+interface TeamKartStatusPageProps {
   sessionId: string;
 }
 
@@ -18,13 +16,11 @@ const KART_STATUS_COLORS: Record<number, string> = {
   5: '#000000', // black
 };
 
-export function LapTimesPage({ sessionId }: LapTimesPageProps) {
-  const [tableData, setTableData] = useState<LapTimesTableResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const [teamKartStatuses, setTeamKartStatuses] = useState<Map<string, number>>(new Map());
   const [teamLastPitLaps, setTeamLastPitLaps] = useState<Map<string, number>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [openPaletteForTeam, setOpenPaletteForTeam] = useState<string | null>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   
@@ -33,6 +29,7 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
   const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number; lapNumber: number }>>([]);
   const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number; lapNumber: number } | null>(null);
   const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
+  const [latestResults, setLatestResults] = useState<RaceResult[]>([]);
 
   // Load team kart statuses
   useEffect(() => {
@@ -50,9 +47,12 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
           });
           setTeamKartStatuses(statusMap);
           setTeamLastPitLaps(lastPitLapMap);
+          setLoading(false);
         }
       } catch (err) {
         console.error('Failed to load team kart statuses:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load team kart statuses');
+        setLoading(false);
       }
     };
 
@@ -95,73 +95,60 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     }
   }, [openPaletteForTeam]);
 
+  // Periodically fetch latest results
   useEffect(() => {
     if (!sessionId) {
       setError('Session ID is required');
-      setLoading(false);
       return;
     }
 
-    // Function to fetch data
-    const fetchData = async (isInitial = false) => {
+    const fetchData = async () => {
       try {
-        if (!isInitial) {
-          setIsRefreshing(true);
-        }
-        setError(null);
-        const response = await fetchLapTimesTable(sessionId);
+        const response = await fetchLatestResults(sessionId);
         if (response.success) {
-          setTableData(response);
-        } else {
-          setError(response.error || 'Failed to fetch lap times table');
+          setLatestResults(response.data);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch lap times table');
-      } finally {
-        if (isInitial) {
-          setLoading(false);
-        }
-        setIsRefreshing(false);
+        console.error('Failed to fetch latest results:', err);
       }
     };
 
     // Fetch immediately
-    fetchData(true);
+    fetchData();
 
     // Set up polling every second
     const intervalId = setInterval(() => {
-      fetchData(false);
+      fetchData();
     }, 1000);
 
-    // Cleanup interval on unmount or sessionId change
     return () => {
       clearInterval(intervalId);
     };
   }, [sessionId]);
 
-  // Detect "IN PIT" on last non-empty lap for each team
+  // Detect "IN PIT" in latest results
   useEffect(() => {
-    if (!tableData || tableData.data.length === 0) return;
+    if (latestResults.length === 0) return;
 
     const newTeamsInPit: Array<{ teamNumber: string; kartStatus: number; lapNumber: number }> = [];
+    const teamsCurrentlyInPit = new Set<string>();
 
-    // Check each competitor
-    tableData.competitorNumbers.forEach((competitorNumber) => {
-      // Skip if already processed
-      if (processedTeams.has(competitorNumber)) return;
+    latestResults.forEach((result) => {
+      if (!result.competitorNumber) return;
 
-      const competitorIndex = tableData.competitorNumbers.indexOf(competitorNumber);
+      // Check if lastLapTime contains "IN PIT"
+      const isInPit = result.lastLapTime && 
+        String(result.lastLapTime).trim().toUpperCase() === 'IN PIT';
       
-      // Find first non-empty lap (last lap chronologically, since lapNumbers is sorted descending)
-      for (let lapIndex = 0; lapIndex < tableData.data.length; lapIndex++) {
-        const value = tableData.data[lapIndex]?.[competitorIndex];
+      if (isInPit) {
+        teamsCurrentlyInPit.add(result.competitorNumber);
         
-        if (value !== null && value !== undefined && value !== '') {
-          // Check if it's "IN PIT"
-          const valueStr = String(value).trim().toUpperCase();
-          if (valueStr === 'IN PIT') {
-            const currentLap = tableData.lapNumbers[lapIndex];
-            const savedLastPitLap = teamLastPitLaps.get(competitorNumber);
+        // Only add to queue if not already processed and not already in queue
+        if (!processedTeams.has(result.competitorNumber)) {
+          // Check if current lap matches saved lastPitLap - skip if matches
+          const currentLap = result.laps;
+          if (currentLap !== null && currentLap !== undefined) {
+            const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
             
             // Check if current lap matches saved lastPitLap - skip if matches
             if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
@@ -169,12 +156,22 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
               return;
             }
             
-            const kartStatus = teamKartStatuses.get(competitorNumber) || 1;
-            newTeamsInPit.push({ teamNumber: competitorNumber, kartStatus, lapNumber: currentLap });
+            const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
+            newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
           }
-          break; // Found first non-empty lap, no need to continue
         }
       }
+    });
+
+    // Remove teams from processedTeams if they're no longer "IN PIT"
+    setProcessedTeams((prev) => {
+      const updated = new Set(prev);
+      prev.forEach((teamNumber) => {
+        if (!teamsCurrentlyInPit.has(teamNumber)) {
+          updated.delete(teamNumber);
+        }
+      });
+      return updated;
     });
 
     // Add new teams to queue if any
@@ -189,7 +186,7 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
         return [...prevQueue, ...newItems];
       });
     }
-  }, [tableData, teamKartStatuses, teamLastPitLaps, processedTeams]);
+  }, [latestResults, teamKartStatuses, teamLastPitLaps, processedTeams]);
 
   // Process queue: show next modal if none is open
   useEffect(() => {
@@ -269,44 +266,6 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-lg text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <div className="text-red-600 font-semibold">Error: {error}</div>
-      </div>
-    );
-  }
-
-  if (!tableData || tableData.data.length === 0) {
-    return (
-      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <div className="text-gray-600">No lap times data found</div>
-      </div>
-    );
-  }
-
-  // Transform data for DataTable
-  // Each row represents a lap, columns are competitor numbers
-  const tableRows = tableData.lapNumbers.map((lap, lapIndex) => {
-    const row: Record<string, string | number | null> = {
-      lap: lap
-    };
-    
-    tableData.competitorNumbers.forEach((competitorNumber, competitorIndex) => {
-      row[competitorNumber] = tableData.data[lapIndex]?.[competitorIndex] ?? null;
-    });
-    
-    return row;
-  });
-
   // Handle status change
   const handleStatusChange = async (teamNumber: string, newStatus: number) => {
     // Update local state immediately
@@ -354,101 +313,71 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     );
   };
 
-  // Create dynamic columns for competitors
-  const competitorColumns = tableData.competitorNumbers.map((competitorNumber) => {
-    const currentStatus = teamKartStatuses.get(competitorNumber) || 1;
-    const bgColor = KART_STATUS_COLORS[currentStatus];
-    const textColor = currentStatus === 5 ? 'text-white' : currentStatus === 1 ? 'text-white' : 'text-gray-900';
-
+  if (loading) {
     return (
-    <Column
-      key={competitorNumber}
-      field={competitorNumber}
-        header={
-          <div className="relative w-full h-full flex items-center justify-center">
-            <div
-              className={`w-full h-full flex items-center justify-center cursor-pointer transition-all hover:opacity-80 ${textColor}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenPaletteForTeam(openPaletteForTeam === competitorNumber ? null : competitorNumber);
-              }}
-            >
-              {competitorNumber}
-            </div>
-            {openPaletteForTeam === competitorNumber && (
-              <ColorPalette
-                teamNumber={competitorNumber}
-                onSelect={(status) => handleStatusChange(competitorNumber, status)}
-              />
-            )}
-          </div>
-        }
-        pt={{
-          headerCell: {
-            style: { backgroundColor: bgColor, padding: 0 }
-          }
-        }}
-      style={{ minWidth: '120px', textAlign: 'center' }}
-        body={(rowData: Record<string, string | number | null>) => {
-        const value = rowData[competitorNumber];
-        const valueStr = value ? String(value).trim().toUpperCase() : '';
-        const isInPit = valueStr === 'IN PIT';
-        
-        return value ? (
-          <span className={`font-mono text-sm ${isInPit ? 'font-bold text-red-600 bg-red-50 px-2 py-1 rounded' : ''}`}>
-            {value as string}
-          </span>
-        ) : (
-          <span className="text-gray-400">-</span>
-        );
-      }}
-    />
+      <div className="flex items-center justify-center p-8">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="text-red-600 font-semibold">Error: {error}</div>
+      </div>
+    );
+  }
+
+  // Convert map to array for rendering
+  const teamStatusesArray = Array.from(teamKartStatuses.entries()).sort((a, b) => {
+    // Sort by team number (assuming numeric or string comparison)
+    return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' });
   });
 
-  return (
-    <div className="w-full h-full flex flex-col">
-      <div className="mb-4 flex items-center gap-2 text-sm text-gray-600 shrink-0">
-        <span>
-          Showing lap times matrix: {tableData.lapNumbers.length} laps × {tableData.competitorNumbers.length} competitors
-        </span>
-        {isRefreshing && (
-          <span className="flex items-center gap-1 text-blue-600">
-            <span className="animate-spin">⟳</span>
-            <span>Updating...</span>
-          </span>
-        )}
+  if (teamStatusesArray.length === 0) {
+    return (
+      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="text-gray-600">No team kart statuses found</div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          value={tableRows}
-          className="p-datatable-sm h-full"
-          scrollable
-          scrollHeight="100%"
-          stripedRows
-          showGridlines
-          size="small"
-          pt={{
-            root: { className: 'border border-gray-200 rounded-lg shadow-sm h-full flex flex-col' },
-            header: { className: 'bg-gray-50 shrink-0' },
-            headerCell: { className: 'font-semibold text-gray-700 py-3 px-4' },
-            bodyCell: { className: 'py-2 px-4' },
-            row: { className: 'hover:bg-gray-50 transition-colors' },
-            wrapper: { className: 'flex-1 overflow-auto' }
-          } as any}
-        >
-        <Column
-          field="lap"
-          header="Lap"
-          style={{ minWidth: '80px', fontWeight: 'bold', backgroundColor: '#f9fafb' }}
-          frozen
-          pt={{
-            headerCell: { className: 'bg-gray-100 sticky left-0 z-10' },
-            bodyCell: { className: 'bg-gray-50 sticky left-0 z-10 font-semibold' }
-          }}
-        />
-        {competitorColumns}
-        </DataTable>
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col p-4">
+      <div className="mb-4 text-sm text-gray-600 shrink-0">
+        <span>Team Kart Statuses: {teamStatusesArray.length} teams</span>
+      </div>
+      
+      <div className="flex-1 overflow-auto">
+        <div className="flex flex-wrap gap-4">
+          {teamStatusesArray.map(([teamNumber, status]) => {
+            const bgColor = KART_STATUS_COLORS[status];
+            const textColor = status === 5 ? 'text-white' : status === 1 ? 'text-white' : 'text-gray-900';
+            
+            return (
+              <div key={teamNumber} className="relative">
+                <div
+                  className={`w-24 h-24 rounded-lg border-2 border-gray-300 flex items-center justify-center font-bold text-lg cursor-pointer transition-all hover:opacity-80 hover:shadow-lg shadow-md ${textColor}`}
+                  style={{ backgroundColor: bgColor }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenPaletteForTeam(openPaletteForTeam === teamNumber ? null : teamNumber);
+                  }}
+                  title={`Team ${teamNumber} - Status ${status}`}
+                >
+                  {teamNumber}
+                </div>
+                {openPaletteForTeam === teamNumber && (
+                  <ColorPalette
+                    teamNumber={teamNumber}
+                    onSelect={(newStatus) => handleStatusChange(teamNumber, newStatus)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Pitlane Selection Modal */}

@@ -15,12 +15,14 @@ export class TeamKartStatusRepository implements ITeamKartStatusRepository {
       id?: number;
       team_number: string;
       kart_status: number;
+      last_pit_lap?: number | null;
     }>;
 
     return rows.map(row => ({
       id: row.id,
       teamNumber: row.team_number,
-      kartStatus: row.kart_status
+      kartStatus: row.kart_status,
+      lastPitLap: row.last_pit_lap ?? undefined
     }));
   }
 
@@ -30,6 +32,7 @@ export class TeamKartStatusRepository implements ITeamKartStatusRepository {
       id?: number;
       team_number: string;
       kart_status: number;
+      last_pit_lap?: number | null;
     } | undefined;
 
     if (!row) {
@@ -39,7 +42,8 @@ export class TeamKartStatusRepository implements ITeamKartStatusRepository {
     return {
       id: row.id,
       teamNumber: row.team_number,
-      kartStatus: row.kart_status
+      kartStatus: row.kart_status,
+      lastPitLap: row.last_pit_lap ?? undefined
     };
   }
 
@@ -50,40 +54,40 @@ export class TeamKartStatusRepository implements ITeamKartStatusRepository {
       // Update existing record
       const stmt = this.db.prepare(`
         UPDATE team_kart_status 
-        SET kart_status = ? 
+        SET kart_status = ?, last_pit_lap = ? 
         WHERE team_number = ?
       `);
-      stmt.run(teamKartStatus.kartStatus, teamKartStatus.teamNumber);
+      stmt.run(teamKartStatus.kartStatus, teamKartStatus.lastPitLap ?? null, teamKartStatus.teamNumber);
     } else {
       // Insert new record
       const stmt = this.db.prepare(`
-        INSERT INTO team_kart_status (team_number, kart_status)
-        VALUES (?, ?)
+        INSERT INTO team_kart_status (team_number, kart_status, last_pit_lap)
+        VALUES (?, ?, ?)
       `);
-      stmt.run(teamKartStatus.teamNumber, teamKartStatus.kartStatus);
+      stmt.run(teamKartStatus.teamNumber, teamKartStatus.kartStatus, teamKartStatus.lastPitLap ?? null);
     }
   }
 
-  updateMany(updates: Array<{ teamNumber: string; kartStatus: number }>): void {
+  updateMany(updates: Array<{ teamNumber: string; kartStatus: number; lastPitLap?: number }>): void {
     const updateStmt = this.db.prepare(`
       UPDATE team_kart_status 
-      SET kart_status = ? 
+      SET kart_status = ?, last_pit_lap = ? 
       WHERE team_number = ?
     `);
 
     const insertStmt = this.db.prepare(`
-      INSERT INTO team_kart_status (team_number, kart_status)
-      VALUES (?, ?)
+      INSERT INTO team_kart_status (team_number, kart_status, last_pit_lap)
+      VALUES (?, ?, ?)
     `);
 
-    const updateMany = this.db.transaction((updatesList: Array<{ teamNumber: string; kartStatus: number }>) => {
+    const updateMany = this.db.transaction((updatesList: Array<{ teamNumber: string; kartStatus: number; lastPitLap?: number }>) => {
       for (const update of updatesList) {
         const existing = this.findByTeamNumber(update.teamNumber);
         
         if (existing) {
-          updateStmt.run(update.kartStatus, update.teamNumber);
+          updateStmt.run(update.kartStatus, update.lastPitLap ?? null, update.teamNumber);
         } else {
-          insertStmt.run(update.teamNumber, update.kartStatus);
+          insertStmt.run(update.teamNumber, update.kartStatus, update.lastPitLap ?? null);
         }
       }
     });
