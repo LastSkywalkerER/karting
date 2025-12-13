@@ -30,6 +30,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
   const processedTeamsRef = useRef<Set<string>>(new Set());
   const [latestResults, setLatestResults] = useState<RaceResult[]>([]);
+  const isProcessingRef = useRef<boolean>(false);
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -186,7 +187,23 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
 
   // Handle pitlane selection
   const handlePitlaneSelection = async (pitlaneNumber: number) => {
-    if (!currentPitlaneModal) return;
+    if (!currentPitlaneModal || isProcessingRef.current) return;
+    
+    // Prevent double processing
+    isProcessingRef.current = true;
+    
+    // Save modal data before closing
+    const modalData = {
+      teamNumber: currentPitlaneModal.teamNumber,
+      kartStatus: currentPitlaneModal.kartStatus,
+      lapNumber: currentPitlaneModal.lapNumber
+    };
+    
+    // Mark team as processed immediately to prevent re-queuing
+    setProcessedTeams((prev) => new Set(prev).add(modalData.teamNumber));
+    
+    // Close modal immediately
+    setCurrentPitlaneModal(null);
 
     try {
       // Load current pitlane statuses
@@ -207,7 +224,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
             // Update selected pitlane with team's kart status
             updates.push({
               pitlaneNumber: i,
-              kartStatus: currentPitlaneModal.kartStatus
+              kartStatus: modalData.kartStatus
             });
           } else {
             // Keep existing status or default to 1 if doesn't exist
@@ -223,33 +240,29 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
 
         // Update local state
         const updatedStatuses = new Map(pitlaneStatuses);
-        updatedStatuses.set(pitlaneNumber, currentPitlaneModal.kartStatus);
+        updatedStatuses.set(pitlaneNumber, modalData.kartStatus);
         setPitlaneStatuses(updatedStatuses);
 
         // Save lapNumber as lastPitLap for the team
         await updateTeamKartStatuses({ 
           updates: [{
-            teamNumber: currentPitlaneModal.teamNumber,
-            kartStatus: currentPitlaneModal.kartStatus,
-            lastPitLap: currentPitlaneModal.lapNumber
+            teamNumber: modalData.teamNumber,
+            kartStatus: modalData.kartStatus,
+            lastPitLap: modalData.lapNumber
           }]
         });
 
         // Update local lastPitLap state
         setTeamLastPitLaps((prev) => {
           const updated = new Map(prev);
-          updated.set(currentPitlaneModal.teamNumber, currentPitlaneModal.lapNumber);
+          updated.set(modalData.teamNumber, modalData.lapNumber);
           return updated;
         });
-
-        // Mark team as processed
-        setProcessedTeams((prev) => new Set(prev).add(currentPitlaneModal.teamNumber));
-
-        // Close current modal
-        setCurrentPitlaneModal(null);
       }
     } catch (err) {
       console.error('Failed to update pitlane kart statuses:', err);
+    } finally {
+      isProcessingRef.current = false;
     }
   };
 
