@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { fetchLapTimesTable } from '@/shared/api/raceResultsApi';
-import type { LapTimesTableResponse } from '@/shared/types/raceResult';
+import { useState, useEffect, useRef } from 'react';
+import { fetchLapTimesTable, fetchTeamKartStatuses, updateTeamKartStatuses } from '@/shared/api/raceResultsApi';
+import type { LapTimesTableResponse, TeamKartStatus } from '@/shared/types/raceResult';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 
@@ -8,11 +8,59 @@ interface LapTimesPageProps {
   sessionId: string;
 }
 
+// Color mapping for kart statuses
+const KART_STATUS_COLORS: Record<number, string> = {
+  1: '#22c55e', // green
+  2: '#eab308', // yellow
+  3: '#f97316', // orange
+  4: '#ef4444', // red
+  5: '#000000', // black
+};
+
 export function LapTimesPage({ sessionId }: LapTimesPageProps) {
   const [tableData, setTableData] = useState<LapTimesTableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [teamKartStatuses, setTeamKartStatuses] = useState<Map<string, number>>(new Map());
+  const [openPaletteForTeam, setOpenPaletteForTeam] = useState<string | null>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
+
+  // Load team kart statuses
+  useEffect(() => {
+    const loadStatuses = async () => {
+      try {
+        const response = await fetchTeamKartStatuses();
+        if (response.success) {
+          const statusMap = new Map<string, number>();
+          response.data.forEach((status: TeamKartStatus) => {
+            statusMap.set(status.teamNumber, status.kartStatus);
+          });
+          setTeamKartStatuses(statusMap);
+        }
+      } catch (err) {
+        console.error('Failed to load team kart statuses:', err);
+      }
+    };
+
+    loadStatuses();
+  }, []);
+
+  // Handle click outside palette to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (paletteRef.current && !paletteRef.current.contains(event.target as Node)) {
+        setOpenPaletteForTeam(null);
+      }
+    };
+
+    if (openPaletteForTeam) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openPaletteForTeam]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -85,7 +133,7 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
   // Transform data for DataTable
   // Each row represents a lap, columns are competitor numbers
   const tableRows = tableData.lapNumbers.map((lap, lapIndex) => {
-    const row: Record<string, string | number> = {
+    const row: Record<string, string | number | null> = {
       lap: lap
     };
     
@@ -96,27 +144,103 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     return row;
   });
 
+  // Handle status change
+  const handleStatusChange = async (teamNumber: string, newStatus: number) => {
+    // Update local state immediately
+    const updatedStatuses = new Map(teamKartStatuses);
+    updatedStatuses.set(teamNumber, newStatus);
+    setTeamKartStatuses(updatedStatuses);
+    setOpenPaletteForTeam(null);
+
+    // Convert map to array format for API
+    const updates = Array.from(updatedStatuses.entries()).map(([teamNumber, kartStatus]) => ({
+      teamNumber,
+      kartStatus,
+    }));
+
+    // Send entire array to backend
+    try {
+      await updateTeamKartStatuses({ updates });
+    } catch (err) {
+      console.error('Failed to update team kart statuses:', err);
+      // Revert on error
+      setTeamKartStatuses(teamKartStatuses);
+    }
+  };
+
+  // Color Palette Component
+  const ColorPalette = ({ teamNumber, onSelect }: { teamNumber: string; onSelect: (status: number) => void }) => {
+    return (
+      <div
+        ref={paletteRef}
+        className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 flex gap-1"
+        style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '4px' }}
+      >
+        {[1, 2, 3, 4, 5].map((status) => (
+          <button
+            key={status}
+            onClick={() => onSelect(status)}
+            className={`w-8 h-8 rounded border-2 transition-all hover:scale-110 ${
+              teamKartStatuses.get(teamNumber) === status ? 'border-gray-800 ring-2 ring-gray-400' : 'border-gray-300'
+            }`}
+            style={{ backgroundColor: KART_STATUS_COLORS[status] }}
+            title={`Status ${status}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
   // Create dynamic columns for competitors
-  const competitorColumns = tableData.competitorNumbers.map((competitorNumber) => (
-    <Column
-      key={competitorNumber}
-      field={competitorNumber}
-      header={competitorNumber}
-      style={{ minWidth: '120px', textAlign: 'center' }}
-      body={(rowData: Record<string, string | number>) => {
-        const value = rowData[competitorNumber];
-        return value ? (
-          <span className="font-mono text-sm">{value as string}</span>
-        ) : (
-          <span className="text-gray-400">-</span>
-        );
-      }}
-    />
-  ));
+  const competitorColumns = tableData.competitorNumbers.map((competitorNumber) => {
+    const currentStatus = teamKartStatuses.get(competitorNumber) || 1;
+    const bgColor = KART_STATUS_COLORS[currentStatus];
+    const textColor = currentStatus === 5 ? 'text-white' : currentStatus === 1 ? 'text-white' : 'text-gray-900';
+
+    return (
+      <Column
+        key={competitorNumber}
+        field={competitorNumber}
+        header={
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div
+              className={`w-full h-full flex items-center justify-center cursor-pointer transition-all hover:opacity-80 ${textColor}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenPaletteForTeam(openPaletteForTeam === competitorNumber ? null : competitorNumber);
+              }}
+            >
+              {competitorNumber}
+            </div>
+            {openPaletteForTeam === competitorNumber && (
+              <ColorPalette
+                teamNumber={competitorNumber}
+                onSelect={(status) => handleStatusChange(competitorNumber, status)}
+              />
+            )}
+          </div>
+        }
+        pt={{
+          headerCell: {
+            style: { backgroundColor: bgColor, padding: 0 }
+          }
+        }}
+        style={{ minWidth: '120px', textAlign: 'center' }}
+        body={(rowData: Record<string, string | number | null>) => {
+          const value = rowData[competitorNumber];
+          return value ? (
+            <span className="font-mono text-sm">{value as string}</span>
+          ) : (
+            <span className="text-gray-400">-</span>
+          );
+        }}
+      />
+    );
+  });
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="mb-4 flex items-center gap-2 text-sm text-gray-600 flex-shrink-0">
+      <div className="mb-4 flex items-center gap-2 text-sm text-gray-600 shrink-0">
         <span>
           Showing lap times matrix: {tableData.lapNumbers.length} laps × {tableData.competitorNumbers.length} competitors
         </span>
@@ -138,12 +262,12 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
           size="small"
           pt={{
             root: { className: 'border border-gray-200 rounded-lg shadow-sm h-full flex flex-col' },
-            header: { className: 'bg-gray-50 flex-shrink-0' },
+            header: { className: 'bg-gray-50 shrink-0' },
             headerCell: { className: 'font-semibold text-gray-700 py-3 px-4' },
             bodyCell: { className: 'py-2 px-4' },
             row: { className: 'hover:bg-gray-50 transition-colors' },
             wrapper: { className: 'flex-1 overflow-auto' }
-          }}
+          } as any}
         >
         <Column
           field="lap"

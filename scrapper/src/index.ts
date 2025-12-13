@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { DatabaseConnection } from './infrastructure/database/Database';
 import { RaceResultRepository } from './infrastructure/database/RaceResultRepository';
+import { TeamKartStatusRepository } from './infrastructure/database/TeamKartStatusRepository';
 import { PuppeteerScraper } from './infrastructure/scraper/PuppeteerScraper';
 import { LapTimesService } from './domain/services/LapTimesService';
 import { RaceResultController } from './presentation/controllers/RaceResultController';
@@ -11,6 +12,7 @@ async function start(): Promise<void> {
     // Infrastructure layer
     const databaseConnection = new DatabaseConnection();
     const raceResultRepository = new RaceResultRepository(databaseConnection);
+    const teamKartStatusRepository = new TeamKartStatusRepository(databaseConnection);
     const scraperService = new PuppeteerScraper(raceResultRepository);
 
     // Domain layer
@@ -20,7 +22,8 @@ async function start(): Promise<void> {
     const raceResultController = new RaceResultController(
       raceResultRepository,
       scraperService,
-      lapTimesService
+      lapTimesService,
+      teamKartStatusRepository
     );
 
     const port = parseInt(process.env.PORT || '3000', 10);

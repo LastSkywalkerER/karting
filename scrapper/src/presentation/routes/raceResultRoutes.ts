@@ -9,6 +9,10 @@ export function createRaceResultRoutes(controller: RaceResultController): Router
   router.get('/results/lap-times', (req, res) => controller.getLapTimesTable(req, res));
   router.get('/results', (req, res) => controller.getResults(req, res));
   router.get('/timestamps', (req, res) => controller.getTimestamps(req, res));
+  
+  // Team kart status routes
+  router.get('/teams/kart-status', (req, res) => controller.getTeamKartStatuses(req, res));
+  router.put('/teams/kart-status', (req, res) => controller.updateTeamKartStatuses(req, res));
 
   return router;
 }

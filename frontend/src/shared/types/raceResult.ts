@@ -28,3 +28,19 @@ export interface LapTimesTableResponse {
   error?: string;
 }
 
+export interface TeamKartStatus {
+  teamNumber: string;
+  kartStatus: number;
+}
+
+export interface TeamKartStatusResponse {
+  success: boolean;
+  count: number;
+  data: TeamKartStatus[];
+  error?: string;
+}
+
+export interface UpdateTeamKartStatusRequest {
+  updates: Array<{ teamNumber: string; kartStatus: number }>;
+}
+

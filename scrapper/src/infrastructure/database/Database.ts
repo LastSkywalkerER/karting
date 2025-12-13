@@ -35,6 +35,20 @@ export class DatabaseConnection {
       CREATE INDEX IF NOT EXISTS idx_timestamp ON race_results(timestamp);
       CREATE INDEX IF NOT EXISTS idx_session_id ON race_results(session_id);
     `);
+
+    // Create team_kart_status table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS team_kart_status (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        team_number TEXT NOT NULL UNIQUE,
+        kart_status INTEGER NOT NULL CHECK(kart_status >= 1 AND kart_status <= 5)
+      )
+    `);
+
+    // Create index for team_number
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_team_number ON team_kart_status(team_number);
+    `);
   }
 
   getDatabase(): Database.Database {
