@@ -32,8 +32,15 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
   const [pitlaneStatuses, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
   const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number; lapNumber: number }>>([]);
   const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number; lapNumber: number } | null>(null);
-  const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
+  // Track processed team+lap combinations to prevent duplicate modals
+  const [processedTeamLaps, setProcessedTeamLaps] = useState<Set<string>>(new Set());
+  const processedTeamLapsRef = useRef<Set<string>>(new Set());
   const isProcessingRef = useRef<boolean>(false);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    processedTeamLapsRef.current = processedTeamLaps;
+  }, [processedTeamLaps]);
 
   // Load team kart statuses
   useEffect(() => {
@@ -148,9 +155,6 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
 
     // Check each competitor
     tableData.competitorNumbers.forEach((competitorNumber) => {
-      // Skip if already processed
-      if (processedTeams.has(competitorNumber)) return;
-
       const competitorIndex = tableData.competitorNumbers.indexOf(competitorNumber);
       
       // Find first non-empty lap (last lap chronologically, since lapNumbers is sorted descending)
@@ -162,16 +166,34 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
           const valueStr = String(value).trim().toUpperCase();
           if (valueStr === 'IN PIT') {
             const currentLap = tableData.lapNumbers[lapIndex];
+            
+            // Create unique key: teamNumber:lapNumber
+            const teamLapKey = `${competitorNumber}:${currentLap}`;
+            
+            // Skip if this team+lap combination was already processed
+            if (processedTeamLapsRef.current.has(teamLapKey)) {
+              break;
+            }
+            
             const savedLastPitLap = teamLastPitLaps.get(competitorNumber);
             
             // Check if current lap matches saved lastPitLap - skip if matches
             if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
               // Already processed this pit stop for this lap, skip
-              return;
+              break;
             }
             
-            const kartStatus = teamKartStatuses.get(competitorNumber) || 1;
-            newTeamsInPit.push({ teamNumber: competitorNumber, kartStatus, lapNumber: currentLap });
+            // Check if team is already in queue or currently showing modal
+            const isInQueue = pitlaneModalQueue.some(item => 
+              item.teamNumber === competitorNumber && item.lapNumber === currentLap
+            );
+            const isCurrentlyShowing = currentPitlaneModal?.teamNumber === competitorNumber && 
+                                      currentPitlaneModal?.lapNumber === currentLap;
+            
+            if (!isInQueue && !isCurrentlyShowing) {
+              const kartStatus = teamKartStatuses.get(competitorNumber) || 1;
+              newTeamsInPit.push({ teamNumber: competitorNumber, kartStatus, lapNumber: currentLap });
+            }
           }
           break; // Found first non-empty lap, no need to continue
         }
@@ -181,16 +203,18 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     // Add new teams to queue if any
     if (newTeamsInPit.length > 0) {
       setPitlaneModalQueue((prevQueue) => {
-        // Filter out duplicates
-        const existingTeamNumbers = new Set(prevQueue.map(item => item.teamNumber));
-        const newItems = newTeamsInPit.filter(item => !existingTeamNumbers.has(item.teamNumber));
+        // Filter out duplicates by team+lap combination
+        const existingKeys = new Set(prevQueue.map(item => `${item.teamNumber}:${item.lapNumber}`));
+        const newItems = newTeamsInPit.filter(item => 
+          !existingKeys.has(`${item.teamNumber}:${item.lapNumber}`)
+        );
         
         if (newItems.length === 0) return prevQueue;
         
         return [...prevQueue, ...newItems];
       });
     }
-  }, [tableData, teamKartStatuses, teamLastPitLaps, processedTeams]);
+  }, [tableData, teamKartStatuses, teamLastPitLaps, pitlaneModalQueue, currentPitlaneModal]);
 
   // Process queue: show next modal if none is open
   useEffect(() => {
@@ -215,8 +239,9 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
       lapNumber: currentPitlaneModal.lapNumber
     };
     
-    // Mark team as processed immediately to prevent re-queuing
-    setProcessedTeams((prev) => new Set(prev).add(modalData.teamNumber));
+    // Mark team+lap combination as processed immediately to prevent re-queuing
+    const teamLapKey = `${modalData.teamNumber}:${modalData.lapNumber}`;
+    setProcessedTeamLaps((prev) => new Set(prev).add(teamLapKey));
     
     // Close modal immediately
     setCurrentPitlaneModal(null);

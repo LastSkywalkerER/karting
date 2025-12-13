@@ -27,15 +27,16 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const [pitlaneStatuses, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
   const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number; lapNumber: number }>>([]);
   const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number; lapNumber: number } | null>(null);
-  const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
-  const processedTeamsRef = useRef<Set<string>>(new Set());
+  // Track processed team+lap combinations to prevent duplicate modals
+  const [processedTeamLaps, setProcessedTeamLaps] = useState<Set<string>>(new Set());
+  const processedTeamLapsRef = useRef<Set<string>>(new Set());
   const [latestResults, setLatestResults] = useState<RaceResult[]>([]);
   const isProcessingRef = useRef<boolean>(false);
   
   // Keep ref in sync with state
   useEffect(() => {
-    processedTeamsRef.current = processedTeams;
-  }, [processedTeams]);
+    processedTeamLapsRef.current = processedTeamLaps;
+  }, [processedTeamLaps]);
 
   // Load team kart statuses
   useEffect(() => {
@@ -122,7 +123,6 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
     if (latestResults.length === 0) return;
 
     const newTeamsInPit: Array<{ teamNumber: string; kartStatus: number; lapNumber: number }> = [];
-    const teamsCurrentlyInPit = new Set<string>();
 
     latestResults.forEach((result) => {
       if (!result.competitorNumber) return;
@@ -132,49 +132,52 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
         String(result.lastLapTime).trim().toUpperCase() === 'IN PIT';
       
       if (isInPit) {
-        teamsCurrentlyInPit.add(result.competitorNumber);
-        
-        // Only add to queue if not already processed (use ref to avoid dependency)
-        if (!processedTeamsRef.current.has(result.competitorNumber)) {
+        const currentLap = result.laps;
+        if (currentLap !== null && currentLap !== undefined) {
+          // Create unique key: teamNumber:lapNumber
+          const teamLapKey = `${result.competitorNumber}:${currentLap}`;
+          
+          // Skip if this team+lap combination was already processed
+          if (processedTeamLapsRef.current.has(teamLapKey)) {
+            return;
+          }
+          
           // Check if current lap matches saved lastPitLap - skip if matches
-          const currentLap = result.laps;
-          if (currentLap !== null && currentLap !== undefined) {
-            const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
-            
-            // Check if current lap matches saved lastPitLap - skip if matches
-            if (savedLastPitLap === undefined || savedLastPitLap !== currentLap) {
-              const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
-              newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
-            }
+          const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
+          if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
+            return;
+          }
+          
+          // Check if team is already in queue or currently showing modal
+          const isInQueue = pitlaneModalQueue.some(item => 
+            item.teamNumber === result.competitorNumber && item.lapNumber === currentLap
+          );
+          const isCurrentlyShowing = currentPitlaneModal?.teamNumber === result.competitorNumber && 
+                                    currentPitlaneModal?.lapNumber === currentLap;
+          
+          if (!isInQueue && !isCurrentlyShowing) {
+            const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
+            newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
           }
         }
       }
     });
 
-    // Remove teams from processedTeams if they're no longer "IN PIT"
-    setProcessedTeams((prev) => {
-      const updated = new Set(prev);
-      prev.forEach((teamNumber) => {
-        if (!teamsCurrentlyInPit.has(teamNumber)) {
-          updated.delete(teamNumber);
-        }
-      });
-      return updated;
-    });
-
     // Add new teams to queue if any
     if (newTeamsInPit.length > 0) {
       setPitlaneModalQueue((prevQueue) => {
-        // Filter out duplicates
-        const existingTeamNumbers = new Set(prevQueue.map(item => item.teamNumber));
-        const newItems = newTeamsInPit.filter(item => !existingTeamNumbers.has(item.teamNumber));
+        // Filter out duplicates by team+lap combination
+        const existingKeys = new Set(prevQueue.map(item => `${item.teamNumber}:${item.lapNumber}`));
+        const newItems = newTeamsInPit.filter(item => 
+          !existingKeys.has(`${item.teamNumber}:${item.lapNumber}`)
+        );
         
         if (newItems.length === 0) return prevQueue;
         
         return [...prevQueue, ...newItems];
       });
     }
-  }, [latestResults, teamKartStatuses, teamLastPitLaps]);
+  }, [latestResults, teamKartStatuses, teamLastPitLaps, pitlaneModalQueue, currentPitlaneModal]);
 
   // Process queue: show next modal if none is open
   useEffect(() => {
@@ -199,8 +202,9 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
       lapNumber: currentPitlaneModal.lapNumber
     };
     
-    // Mark team as processed immediately to prevent re-queuing
-    setProcessedTeams((prev) => new Set(prev).add(modalData.teamNumber));
+    // Mark team+lap combination as processed immediately to prevent re-queuing
+    const teamLapKey = `${modalData.teamNumber}:${modalData.lapNumber}`;
+    setProcessedTeamLaps((prev) => new Set(prev).add(teamLapKey));
     
     // Close modal immediately
     setCurrentPitlaneModal(null);
@@ -393,7 +397,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
         <span>Team Kart Statuses: {teamStatusesArray.length} teams</span>
       </div>
       
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ paddingLeft: '30px', paddingRight: '30px' }}>
         <div className="flex flex-wrap gap-4">
           {teamStatusesArray.map(([teamNumber, status]) => {
             const bgColor = KART_STATUS_COLORS[status];
