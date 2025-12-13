@@ -123,6 +123,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
     if (latestResults.length === 0) return;
 
     const newTeamsInPit: Array<{ teamNumber: string; kartStatus: number; lapNumber: number }> = [];
+    const teamsCurrentlyInPit = new Map<string, number>(); // teamNumber -> lapNumber
 
     latestResults.forEach((result) => {
       if (!result.competitorNumber) return;
@@ -131,36 +132,71 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
       const isInPit = result.lastLapTime && 
         String(result.lastLapTime).trim().toUpperCase() === 'IN PIT';
       
-      if (isInPit) {
-        const currentLap = result.laps;
-        if (currentLap !== null && currentLap !== undefined) {
-          // Create unique key: teamNumber:lapNumber
-          const teamLapKey = `${result.competitorNumber}:${currentLap}`;
-          
-          // Skip if this team+lap combination was already processed
-          if (processedTeamLapsRef.current.has(teamLapKey)) {
-            return;
-          }
-          
-          // Check if current lap matches saved lastPitLap - skip if matches
-          const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
-          if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
-            return;
-          }
-          
-          // Check if team is already in queue or currently showing modal
-          const isInQueue = pitlaneModalQueue.some(item => 
-            item.teamNumber === result.competitorNumber && item.lapNumber === currentLap
-          );
-          const isCurrentlyShowing = currentPitlaneModal?.teamNumber === result.competitorNumber && 
-                                    currentPitlaneModal?.lapNumber === currentLap;
-          
-          if (!isInQueue && !isCurrentlyShowing) {
-            const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
-            newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
-          }
+      const currentLap = result.laps;
+      
+      if (isInPit && currentLap !== null && currentLap !== undefined) {
+        teamsCurrentlyInPit.set(result.competitorNumber, currentLap);
+        
+        // Create unique key: teamNumber:lapNumber
+        const teamLapKey = `${result.competitorNumber}:${currentLap}`;
+        
+        // Skip if this team+lap combination was already processed in this session
+        if (processedTeamLapsRef.current.has(teamLapKey)) {
+          return;
+        }
+        
+        // Check if current lap matches saved lastPitLap
+        // This means the team was already processed for this lap (e.g., after page refresh)
+        // Only skip if savedLastPitLap matches currentLap AND team is still in pit on that lap
+        const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
+        const shouldSkipDueToSavedLap = savedLastPitLap !== undefined && savedLastPitLap === currentLap;
+        
+        if (shouldSkipDueToSavedLap) {
+          // Team was already processed for this lap, mark it as processed to avoid showing modal again
+          // Use functional update to ensure we have the latest state
+          setProcessedTeamLaps((prev) => {
+            const key = `${result.competitorNumber}:${currentLap}`;
+            if (prev.has(key)) return prev;
+            const updated = new Set(prev);
+            updated.add(key);
+            return updated;
+          });
+          return;
+        }
+        
+        // Check if team is already in queue or currently showing modal
+        const isInQueue = pitlaneModalQueue.some(item => 
+          item.teamNumber === result.competitorNumber && item.lapNumber === currentLap
+        );
+        const isCurrentlyShowing = currentPitlaneModal?.teamNumber === result.competitorNumber && 
+                                  currentPitlaneModal?.lapNumber === currentLap;
+        
+        if (!isInQueue && !isCurrentlyShowing) {
+          const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
+          newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
         }
       }
+    });
+
+    // Clean up processedTeamLaps: remove entries for teams that are no longer in pit or have moved to a different lap
+    setProcessedTeamLaps((prev) => {
+      const updated = new Set(prev);
+      let hasChanges = false;
+      
+      // Remove entries for teams that are not currently in pit or are on a different lap
+      prev.forEach((key) => {
+        const [teamNumber, lapNumberStr] = key.split(':');
+        const lapNumber = parseInt(lapNumberStr, 10);
+        const currentLapForTeam = teamsCurrentlyInPit.get(teamNumber);
+        
+        // If team is not in pit anymore, or is on a different lap, remove the old entry
+        if (currentLapForTeam === undefined || currentLapForTeam !== lapNumber) {
+          updated.delete(key);
+          hasChanges = true;
+        }
+      });
+      
+      return hasChanges ? updated : prev;
     });
 
     // Add new teams to queue if any

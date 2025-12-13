@@ -152,6 +152,7 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
     if (!tableData || tableData.data.length === 0) return;
 
     const newTeamsInPit: Array<{ teamNumber: string; kartStatus: number; lapNumber: number }> = [];
+    const teamsCurrentlyInPit = new Map<string, number>(); // teamNumber -> lapNumber
 
     // Check each competitor
     tableData.competitorNumbers.forEach((competitorNumber) => {
@@ -166,20 +167,32 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
           const valueStr = String(value).trim().toUpperCase();
           if (valueStr === 'IN PIT') {
             const currentLap = tableData.lapNumbers[lapIndex];
+            teamsCurrentlyInPit.set(competitorNumber, currentLap);
             
             // Create unique key: teamNumber:lapNumber
             const teamLapKey = `${competitorNumber}:${currentLap}`;
             
-            // Skip if this team+lap combination was already processed
+            // Skip if this team+lap combination was already processed in this session
             if (processedTeamLapsRef.current.has(teamLapKey)) {
               break;
             }
             
+            // Check if current lap matches saved lastPitLap
+            // This means the team was already processed for this lap (e.g., after page refresh)
+            // Only skip if savedLastPitLap matches currentLap AND team is still in pit on that lap
             const savedLastPitLap = teamLastPitLaps.get(competitorNumber);
+            const shouldSkipDueToSavedLap = savedLastPitLap !== undefined && savedLastPitLap === currentLap;
             
-            // Check if current lap matches saved lastPitLap - skip if matches
-            if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
-              // Already processed this pit stop for this lap, skip
+            if (shouldSkipDueToSavedLap) {
+              // Team was already processed for this lap, mark it as processed to avoid showing modal again
+              // Use functional update to ensure we have the latest state
+              setProcessedTeamLaps((prev) => {
+                const key = `${competitorNumber}:${currentLap}`;
+                if (prev.has(key)) return prev;
+                const updated = new Set(prev);
+                updated.add(key);
+                return updated;
+              });
               break;
             }
             
@@ -198,6 +211,27 @@ export function LapTimesPage({ sessionId }: LapTimesPageProps) {
           break; // Found first non-empty lap, no need to continue
         }
       }
+    });
+
+    // Clean up processedTeamLaps: remove entries for teams that are no longer in pit or have moved to a different lap
+    setProcessedTeamLaps((prev) => {
+      const updated = new Set(prev);
+      let hasChanges = false;
+      
+      // Remove entries for teams that are not currently in pit or are on a different lap
+      prev.forEach((key) => {
+        const [teamNumber, lapNumberStr] = key.split(':');
+        const lapNumber = parseInt(lapNumberStr, 10);
+        const currentLapForTeam = teamsCurrentlyInPit.get(teamNumber);
+        
+        // If team is not in pit anymore, or is on a different lap, remove the old entry
+        if (currentLapForTeam === undefined || currentLapForTeam !== lapNumber) {
+          updated.delete(key);
+          hasChanges = true;
+        }
+      });
+      
+      return hasChanges ? updated : prev;
     });
 
     // Add new teams to queue if any
