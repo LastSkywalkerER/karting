@@ -215,16 +215,25 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
           existingPitlanesMap.set(status.pitlaneNumber, status.kartStatus);
         });
 
+        // Get current status of selected pitlane before swap
+        const pitlaneCurrentStatus = existingPitlanesMap.get(pitlaneNumber) || 1;
+        
+        // Get current status of team (from modalData, which was saved before closing modal)
+        const teamCurrentStatus = modalData.kartStatus;
+
+        // Swap: pitlane gets team's status, team gets pitlane's status
+        console.log(`Swapping statuses: Team ${modalData.teamNumber} (${teamCurrentStatus}) <-> Pitlane ${pitlaneNumber} (${pitlaneCurrentStatus})`);
+
         // Create updates array with all existing pitlanes, updating the selected one
         const updates: Array<{ pitlaneNumber: number; kartStatus: number }> = [];
         
         // Add all existing pitlanes (1-4), updating the selected one
         for (let i = 1; i <= 4; i++) {
           if (i === pitlaneNumber) {
-            // Update selected pitlane with team's kart status
+            // Update selected pitlane with team's kart status (swap)
             updates.push({
               pitlaneNumber: i,
-              kartStatus: modalData.kartStatus
+              kartStatus: teamCurrentStatus // Pitlane gets team's status
             });
           } else {
             // Keep existing status or default to 1 if doesn't exist
@@ -235,21 +244,33 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
           }
         }
 
-        // Send update to API
+        // Send update to API for pitlanes
         await updatePitlaneKartStatuses({ updates });
 
-        // Update local state
-        const updatedStatuses = new Map(pitlaneStatuses);
-        updatedStatuses.set(pitlaneNumber, modalData.kartStatus);
-        setPitlaneStatuses(updatedStatuses);
+        // Reload pitlane statuses from API to ensure sync
+        const reloadPitlaneResponse = await fetchPitlaneKartStatuses();
+        if (reloadPitlaneResponse.success) {
+          const reloadedStatusMap = new Map<number, number>();
+          reloadPitlaneResponse.data.forEach((status: PitlaneKartStatus) => {
+            reloadedStatusMap.set(status.pitlaneNumber, status.kartStatus);
+          });
+          setPitlaneStatuses(reloadedStatusMap);
+        }
 
-        // Save lapNumber as lastPitLap for the team
+        // Save lapNumber as lastPitLap for the team and swap kart status
         await updateTeamKartStatuses({ 
           updates: [{
             teamNumber: modalData.teamNumber,
-            kartStatus: modalData.kartStatus,
+            kartStatus: pitlaneCurrentStatus, // Team gets pitlane's status
             lastPitLap: modalData.lapNumber
           }]
+        });
+
+        // Update local team kart status (swap)
+        setTeamKartStatuses((prev) => {
+          const updated = new Map(prev);
+          updated.set(modalData.teamNumber, pitlaneCurrentStatus);
+          return updated;
         });
 
         // Update local lastPitLap state

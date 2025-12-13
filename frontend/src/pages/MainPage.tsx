@@ -36,7 +36,17 @@ export function MainPage() {
       }
     };
 
+    // Load immediately
     loadPitlaneStatuses();
+
+    // Set up polling every second to sync with updates from other pages
+    const intervalId = setInterval(() => {
+      loadPitlaneStatuses();
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Close palette when clicking outside
