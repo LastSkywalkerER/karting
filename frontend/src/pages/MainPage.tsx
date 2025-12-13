@@ -3,7 +3,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { RaceResultsPage } from './RaceResultsPage';
 import { LapTimesPage } from './LapTimesPage';
 import { TeamKartStatusPage } from './TeamKartStatusPage';
-import { fetchPitlaneKartStatuses } from '@/shared/api/raceResultsApi';
+import { fetchPitlaneKartStatuses, updatePitlaneKartStatuses } from '@/shared/api/raceResultsApi';
 import type { PitlaneKartStatus } from '@/shared/types/raceResult';
 
 // Color mapping for kart statuses
@@ -19,6 +19,7 @@ export function MainPage() {
   const [sessionId, setSessionId] = useState('0409BF1AD0B97F05-2147486933-1073748974');
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
   const [pitlaneStatuses, setPitlaneStatuses] = useState<PitlaneKartStatus[]>([]);
+  const [openPaletteForPitlane, setOpenPaletteForPitlane] = useState<number | null>(null);
 
   // Load pitlane kart statuses
   useEffect(() => {
@@ -38,9 +39,127 @@ export function MainPage() {
     loadPitlaneStatuses();
   }, []);
 
+  // Close palette when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        openPaletteForPitlane !== null &&
+        !target.closest('[data-color-palette]') &&
+        !target.closest('[data-pitlane-square]')
+      ) {
+        setOpenPaletteForPitlane(null);
+      }
+    };
+
+    if (openPaletteForPitlane !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openPaletteForPitlane]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentSessionId(sessionId);
+  };
+
+  // Handle pitlane status change
+  const handlePitlaneStatusChange = async (pitlaneNumber: number, newStatus: number) => {
+    try {
+      // Load current pitlane statuses
+      const response = await fetchPitlaneKartStatuses();
+      if (response.success) {
+        // Create a map of existing pitlanes
+        const existingPitlanesMap = new Map<number, number>();
+        response.data.forEach((status: PitlaneKartStatus) => {
+          existingPitlanesMap.set(status.pitlaneNumber, status.kartStatus);
+        });
+
+        // Create updates array with all existing pitlanes, updating the selected one
+        const updates: Array<{ pitlaneNumber: number; kartStatus: number }> = [];
+        
+        // Add all existing pitlanes (1-4), updating the selected one
+        for (let i = 1; i <= 4; i++) {
+          if (i === pitlaneNumber) {
+            // Update selected pitlane with new kart status
+            updates.push({
+              pitlaneNumber: i,
+              kartStatus: newStatus
+            });
+          } else {
+            // Keep existing status or default to 1 if doesn't exist
+            updates.push({
+              pitlaneNumber: i,
+              kartStatus: existingPitlanesMap.get(i) || 1
+            });
+          }
+        }
+
+        // Send update to API
+        await updatePitlaneKartStatuses({ updates });
+
+        // Update local state
+        const updatedStatuses = pitlaneStatuses.map(pitlane => 
+          pitlane.pitlaneNumber === pitlaneNumber 
+            ? { ...pitlane, kartStatus: newStatus }
+            : pitlane
+        );
+        setPitlaneStatuses(updatedStatuses);
+        setOpenPaletteForPitlane(null);
+      }
+    } catch (err) {
+      console.error('Failed to update pitlane kart statuses:', err);
+    }
+  };
+
+  // Color Palette Component
+  const ColorPalette = ({ pitlaneNumber, onSelect }: { pitlaneNumber: number; onSelect: (status: number) => void }) => {
+    const currentStatus = pitlaneStatuses.find(p => p.pitlaneNumber === pitlaneNumber)?.kartStatus || 1;
+    
+    return (
+      <div
+        data-color-palette
+        className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 flex gap-1"
+        style={{ 
+          top: '100%', 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
+          marginTop: '4px',
+          zIndex: 100
+        }}
+        onMouseDown={(e) => {
+          // Prevent closing palette when clicking inside it
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          // Prevent closing palette when clicking inside it
+          e.stopPropagation();
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((status) => (
+          <button
+            key={status}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(status);
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className={`w-8 h-8 rounded border-2 transition-all hover:scale-110 cursor-pointer ${
+              currentStatus === status ? 'border-gray-800 ring-2 ring-gray-400' : 'border-gray-300'
+            }`}
+            style={{ backgroundColor: KART_STATUS_COLORS[status] }}
+            title={`Status ${status}`}
+          />
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -79,16 +198,37 @@ export function MainPage() {
         <div className="mt-4 flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-700">Pitlanes:</span>
           <div className="flex gap-2">
-            {pitlaneStatuses.map((pitlane) => (
-              <div
-                key={pitlane.pitlaneNumber}
-                className="w-12 h-12 rounded border-2 border-gray-300 flex items-center justify-center font-bold text-white shadow-sm"
-                style={{ backgroundColor: KART_STATUS_COLORS[pitlane.kartStatus] || '#gray' }}
-                title={`Pitlane ${pitlane.pitlaneNumber} - Status ${pitlane.kartStatus}`}
-              >
-                {pitlane.pitlaneNumber}
-              </div>
-            ))}
+            {pitlaneStatuses.map((pitlane) => {
+              const bgColor = KART_STATUS_COLORS[pitlane.kartStatus] || '#gray';
+              const textColor = pitlane.kartStatus === 5 ? 'text-white' : pitlane.kartStatus === 1 ? 'text-white' : 'text-gray-900';
+              
+              return (
+                <div 
+                  key={pitlane.pitlaneNumber} 
+                  className="relative" 
+                  style={{ zIndex: openPaletteForPitlane === pitlane.pitlaneNumber ? 100 : 'auto' }}
+                >
+                  <div
+                    data-pitlane-square
+                    className={`w-12 h-12 rounded border-2 border-gray-300 flex items-center justify-center font-bold text-white shadow-sm cursor-pointer transition-all hover:opacity-80 hover:shadow-lg ${textColor}`}
+                    style={{ backgroundColor: bgColor }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenPaletteForPitlane(openPaletteForPitlane === pitlane.pitlaneNumber ? null : pitlane.pitlaneNumber);
+                    }}
+                    title={`Pitlane ${pitlane.pitlaneNumber} - Status ${pitlane.kartStatus}`}
+                  >
+                    {pitlane.pitlaneNumber}
+                  </div>
+                  {openPaletteForPitlane === pitlane.pitlaneNumber && (
+                    <ColorPalette
+                      pitlaneNumber={pitlane.pitlaneNumber}
+                      onSelect={(newStatus) => handlePitlaneStatusChange(pitlane.pitlaneNumber, newStatus)}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
