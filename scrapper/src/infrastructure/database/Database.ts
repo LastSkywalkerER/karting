@@ -6,7 +6,9 @@ export class DatabaseConnection {
 
   constructor(dbPath?: string) {
     // Use process.cwd() for CommonJS compatibility
-    const finalPath = dbPath || path.join(process.cwd(), 'race_data.db');
+    // In Docker, use /app/data directory for volume mounting
+    const defaultPath = process.env.DB_PATH || path.join(process.cwd(), process.env.NODE_ENV === 'production' ? 'data' : '', 'race_data.db');
+    const finalPath = dbPath || defaultPath;
     this.db = new Database(finalPath);
     this.initializeSchema();
   }

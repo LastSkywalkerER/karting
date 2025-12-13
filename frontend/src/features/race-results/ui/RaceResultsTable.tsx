@@ -106,11 +106,9 @@ export function RaceResultsTable({ sessionId }: RaceResultsTableProps) {
           pt={{
             root: { className: 'border border-gray-200 rounded-lg shadow-sm h-full flex flex-col' },
             header: { className: 'bg-gray-50 flex-shrink-0' },
-            headerCell: { className: 'font-semibold text-gray-700 py-3 px-4' },
-            bodyCell: { className: 'py-2 px-4' },
-            row: { className: 'hover:bg-gray-50 transition-colors' },
             wrapper: { className: 'flex-1 overflow-auto' }
           }}
+          rowClassName={() => 'hover:bg-gray-50 transition-colors'}
         >
         <Column
           field="position"

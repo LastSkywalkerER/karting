@@ -24,7 +24,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const [openPaletteForTeam, setOpenPaletteForTeam] = useState<string | null>(null);
   
   // Pitlane modal states
-  const [pitlaneStatuses, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
+  const [, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
   const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number; lapNumber: number }>>([]);
   const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number; lapNumber: number } | null>(null);
   // Track processed team+lap combinations to prevent duplicate modals

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  scrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scrapper
+    platform: linux/amd64
+    container_name: race-stats-scrapper
+    environment:
+      - PORT=3000
+      - DB_PATH=/app/data/race_data.db
+      - NODE_ENV=production
+    volumes:
+      - scrapper_data:/app/data
+    networks:
+      - race-stats-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    platform: linux/amd64
+    container_name: race-stats-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      scrapper:
+        condition: service_healthy
+    networks:
+      - race-stats-network
+
+volumes:
+  scrapper_data:
+
+networks:
+  race-stats-network:
+    driver: bridge
+
