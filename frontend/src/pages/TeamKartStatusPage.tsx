@@ -22,14 +22,19 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openPaletteForTeam, setOpenPaletteForTeam] = useState<string | null>(null);
-  const paletteRef = useRef<HTMLDivElement>(null);
   
   // Pitlane modal states
   const [pitlaneStatuses, setPitlaneStatuses] = useState<Map<number, number>>(new Map());
   const [pitlaneModalQueue, setPitlaneModalQueue] = useState<Array<{ teamNumber: string; kartStatus: number; lapNumber: number }>>([]);
   const [currentPitlaneModal, setCurrentPitlaneModal] = useState<{ teamNumber: string; kartStatus: number; lapNumber: number } | null>(null);
   const [processedTeams, setProcessedTeams] = useState<Set<string>>(new Set());
+  const processedTeamsRef = useRef<Set<string>>(new Set());
   const [latestResults, setLatestResults] = useState<RaceResult[]>([]);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    processedTeamsRef.current = processedTeams;
+  }, [processedTeams]);
 
   // Load team kart statuses
   useEffect(() => {
@@ -79,21 +84,6 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
     loadPitlaneStatuses();
   }, []);
 
-  // Handle click outside palette to close it
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (paletteRef.current && !paletteRef.current.contains(event.target as Node)) {
-        setOpenPaletteForTeam(null);
-      }
-    };
-
-    if (openPaletteForTeam) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [openPaletteForTeam]);
 
   // Periodically fetch latest results
   useEffect(() => {
@@ -143,21 +133,18 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
       if (isInPit) {
         teamsCurrentlyInPit.add(result.competitorNumber);
         
-        // Only add to queue if not already processed and not already in queue
-        if (!processedTeams.has(result.competitorNumber)) {
+        // Only add to queue if not already processed (use ref to avoid dependency)
+        if (!processedTeamsRef.current.has(result.competitorNumber)) {
           // Check if current lap matches saved lastPitLap - skip if matches
           const currentLap = result.laps;
           if (currentLap !== null && currentLap !== undefined) {
             const savedLastPitLap = teamLastPitLaps.get(result.competitorNumber);
             
             // Check if current lap matches saved lastPitLap - skip if matches
-            if (savedLastPitLap !== undefined && savedLastPitLap === currentLap) {
-              // Already processed this pit stop for this lap, skip
-              return;
+            if (savedLastPitLap === undefined || savedLastPitLap !== currentLap) {
+              const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
+              newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
             }
-            
-            const kartStatus = teamKartStatuses.get(result.competitorNumber) || 1;
-            newTeamsInPit.push({ teamNumber: result.competitorNumber, kartStatus, lapNumber: currentLap });
           }
         }
       }
@@ -186,7 +173,7 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
         return [...prevQueue, ...newItems];
       });
     }
-  }, [latestResults, teamKartStatuses, teamLastPitLaps, processedTeams]);
+  }, [latestResults, teamKartStatuses, teamLastPitLaps]);
 
   // Process queue: show next modal if none is open
   useEffect(() => {
@@ -294,15 +281,38 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
   const ColorPalette = ({ teamNumber, onSelect }: { teamNumber: string; onSelect: (status: number) => void }) => {
     return (
       <div
-        ref={paletteRef}
-        className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 flex gap-1"
-        style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '4px' }}
+        data-color-palette
+        className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 flex gap-1"
+        style={{ 
+          top: '100%', 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
+          marginTop: '4px',
+          zIndex: 100
+        }}
+        onMouseDown={(e) => {
+          // Prevent closing palette when clicking inside it
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          // Prevent closing palette when clicking inside it
+          e.stopPropagation();
+        }}
       >
         {[1, 2, 3, 4, 5].map((status) => (
           <button
             key={status}
-            onClick={() => onSelect(status)}
-            className={`w-8 h-8 rounded border-2 transition-all hover:scale-110 ${
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(status);
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className={`w-8 h-8 rounded border-2 transition-all hover:scale-110 cursor-pointer ${
               teamKartStatuses.get(teamNumber) === status ? 'border-gray-800 ring-2 ring-gray-400' : 'border-gray-300'
             }`}
             style={{ backgroundColor: KART_STATUS_COLORS[status] }}
@@ -356,8 +366,9 @@ export function TeamKartStatusPage({ sessionId }: TeamKartStatusPageProps) {
             const textColor = status === 5 ? 'text-white' : status === 1 ? 'text-white' : 'text-gray-900';
             
             return (
-              <div key={teamNumber} className="relative">
+              <div key={teamNumber} className="relative" style={{ zIndex: openPaletteForTeam === teamNumber ? 100 : 'auto' }}>
                 <div
+                  data-team-square
                   className={`w-24 h-24 rounded-lg border-2 border-gray-300 flex items-center justify-center font-bold text-lg cursor-pointer transition-all hover:opacity-80 hover:shadow-lg shadow-md ${textColor}`}
                   style={{ backgroundColor: bgColor }}
                   onClick={(e) => {
