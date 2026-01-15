@@ -43,7 +43,10 @@ RUN yarn build
 
 EXPOSE 3000
 
-RUN useradd -m puppeteeruser
+RUN useradd -m puppeteeruser && \
+    mkdir -p /app/data && \
+    chown -R puppeteeruser:puppeteeruser /app/data
+
 USER puppeteeruser
 
 CMD ["yarn", "start"]

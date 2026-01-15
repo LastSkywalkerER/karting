@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 export class DatabaseConnection {
   private db: Database.Database;
@@ -9,6 +10,13 @@ export class DatabaseConnection {
     // In Docker, use /app/data directory for volume mounting
     const defaultPath = process.env.DB_PATH || path.join(process.cwd(), process.env.NODE_ENV === 'production' ? 'data' : '', 'race_data.db');
     const finalPath = dbPath || defaultPath;
+    
+    // Ensure directory exists before creating database
+    const dbDir = path.dirname(finalPath);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    
     this.db = new Database(finalPath);
     this.initializeSchema();
   }
