@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+@layer base {
 * {
   margin: 0;
   padding: 0;
@@ -12,40 +13,16 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafafa;
+    background-color: #020617;
 }
 
 #root {
   min-height: 100vh;
 }
-
-/* Custom PrimeReact TabView styles */
-.custom-tabview .p-tabview-nav {
-  @apply bg-white border-b border-gray-200;
 }
 
-.custom-tabview .p-tabview-nav li .p-tabview-nav-link {
-  @apply px-6 py-3 text-gray-600 font-medium transition-colors;
-  border-bottom: 2px solid transparent;
-}
-
-.custom-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
-  @apply text-blue-600 border-blue-600;
-}
-
-.custom-tabview .p-tabview-nav li .p-tabview-nav-link:hover {
-  @apply text-blue-600 bg-gray-50;
-}
-
-.custom-tabview .p-tabview-panels {
-  @apply bg-white flex-1 overflow-hidden;
-}
-
-.custom-tabview .p-tabview-panel {
-  @apply h-full flex flex-col;
-}
-
-.custom-tabview {
-  @apply h-full flex flex-col;
+/* Tailwind theme hooks */
+:root {
+  color-scheme: dark;
 }
 
