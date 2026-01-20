@@ -42,7 +42,12 @@ export function KartEditModal({
           </label>
           <Select
             value={formData.status}
-            onChange={(e) => onFormChange({ ...formData, status: e.value })}
+            onChange={(e) =>
+              onFormChange({
+                ...formData,
+                status: e.value ?? formData.status,
+              })
+            }
             options={STATUS_OPTIONS}
             optionLabel="label"
             optionValue="value"

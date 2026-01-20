@@ -2,7 +2,7 @@ interface SelectChangeEvent<TValue> {
   value: TValue | null;
 }
 
-interface SelectProps<TOption extends Record<string, unknown>, TValue> {
+interface SelectProps<TOption extends object, TValue> {
   value: TValue | null;
   onChange: (event: SelectChangeEvent<TValue>) => void;
   options: TOption[];
@@ -13,7 +13,7 @@ interface SelectProps<TOption extends Record<string, unknown>, TValue> {
   disabled?: boolean;
 }
 
-export function Select<TOption extends SelectOption, TValue>({
+export function Select<TOption extends object, TValue>({
   value,
   onChange,
   options,
