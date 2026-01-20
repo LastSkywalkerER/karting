@@ -188,9 +188,14 @@ export function PitlanePage() {
   };
 
   const selectedRace = races.find((r) => r.id === selectedRaceId);
-  const raceTeams = selectedRace?.teams || [];
-  const availableTeamsCount = raceTeams.filter((team) => {
-    const teamKarts = karts.filter((kart) => kart.teamId === team.id);
+  const raceTeams = selectedRace?.raceTeams || [];
+  const teamOptions = raceTeams.map((entry) => ({
+    id: entry.teamId,
+    label: `${entry.number ?? '?'} - ${entry.team.name}`,
+  }));
+  const teamNumberById = new Map(raceTeams.map((entry) => [entry.teamId, entry.number]));
+  const availableTeamsCount = raceTeams.filter((entry) => {
+    const teamKarts = karts.filter((kart) => kart.teamId === entry.teamId);
     if (teamKarts.length === 0) {
       return false;
     }
@@ -279,7 +284,7 @@ export function PitlanePage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">
-                              {entry.team?.number || '?'}
+                              {teamNumberById.get(entry.teamId) || '?'}
                             </div>
                             <span className="text-white">{entry.team?.name || 'Unknown'}</span>
                           </div>
@@ -311,7 +316,7 @@ export function PitlanePage() {
           formData={addFormData}
           onFormChange={setAddFormData}
           onAdd={handleAddKart}
-          teams={raceTeams}
+          teams={teamOptions}
         />
       )}
 
@@ -346,8 +351,8 @@ export function PitlanePage() {
             <Select
               value={removeTeamId}
               onChange={(e) => setRemoveTeamId(e.value)}
-              options={[{ id: null, name: 'None' }, ...raceTeams]}
-              optionLabel="name"
+              options={[{ id: null, label: 'None' }, ...teamOptions]}
+              optionLabel="label"
               optionValue="id"
               className="w-full"
             />

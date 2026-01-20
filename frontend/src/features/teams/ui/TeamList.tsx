@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/shared/ui';
 import type { Team } from '@/shared/types/team';
 
@@ -10,27 +10,9 @@ interface TeamListProps {
 }
 
 export function TeamList({ teams, loading, onEdit, onDelete }: TeamListProps) {
-  const [sortField, setSortField] = useState<'number' | 'name'>('number');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
   const sortedTeams = useMemo(() => {
-    const sorted = [...teams].sort((a, b) => {
-      if (sortField === 'number') {
-        return Number(a.number) - Number(b.number);
-      }
-      return a.name.localeCompare(b.name);
-    });
-    return sortOrder === 'asc' ? sorted : sorted.reverse();
-  }, [teams, sortField, sortOrder]);
-
-  const toggleSort = (field: 'number' | 'name') => {
-    if (sortField === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-    setSortField(field);
-    setSortOrder('asc');
-  };
+    return [...teams].sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams]);
 
   if (loading) {
     return (
@@ -55,40 +37,7 @@ export function TeamList({ teams, loading, onEdit, onDelete }: TeamListProps) {
         <thead className="bg-slate-800/50">
           <tr>
             <th className="text-left px-6 py-4 text-slate-400 font-medium">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 hover:text-slate-200"
-                onClick={() => toggleSort('number')}
-              >
-                Number
-                <i
-                  className={`pi ${
-                    sortField === 'number'
-                      ? sortOrder === 'asc'
-                        ? 'pi-sort-amount-up-alt'
-                        : 'pi-sort-amount-down'
-                      : 'pi-sort-alt'
-                  }`}
-                />
-              </button>
-            </th>
-            <th className="text-left px-6 py-4 text-slate-400 font-medium">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 hover:text-slate-200"
-                onClick={() => toggleSort('name')}
-              >
-                Name
-                <i
-                  className={`pi ${
-                    sortField === 'name'
-                      ? sortOrder === 'asc'
-                        ? 'pi-sort-amount-up-alt'
-                        : 'pi-sort-amount-down'
-                      : 'pi-sort-alt'
-                  }`}
-                />
-              </button>
+              Name
             </th>
             <th className="px-6 py-4" />
           </tr>
@@ -96,9 +45,6 @@ export function TeamList({ teams, loading, onEdit, onDelete }: TeamListProps) {
         <tbody>
           {sortedTeams.map((team) => (
             <tr key={team.id} className="border-t border-slate-800">
-              <td className="px-7 py-5 text-slate-200">
-                <div className="pr-1">{team.number}</div>
-              </td>
               <td className="px-7 py-5 text-slate-200">
                 <div className="pr-1">{team.name}</div>
               </td>

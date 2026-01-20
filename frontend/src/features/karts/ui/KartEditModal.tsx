@@ -1,6 +1,5 @@
 import { Button, Dialog, Select } from '@/shared/ui';
 import type { Kart } from '@/shared/types/kart';
-import type { Team } from '@/shared/types/team';
 
 const STATUS_OPTIONS = [
   { value: 1, label: 'Good (Green)', color: '#22c55e' },
@@ -17,7 +16,7 @@ interface KartEditModalProps {
   formData: { status: number; teamId: number | null };
   onFormChange: (data: { status: number; teamId: number | null }) => void;
   onSave: () => void;
-  teams: Team[];
+  teams: { id: number | null; label: string }[];
 }
 
 export function KartEditModal({
@@ -57,8 +56,8 @@ export function KartEditModal({
           <Select
             value={formData.teamId}
             onChange={(e) => onFormChange({ ...formData, teamId: e.value })}
-            options={[{ id: null, name: 'Unassigned', number: '-' }, ...teams]}
-            optionLabel="name"
+            options={[{ id: null, label: 'Unassigned' }, ...teams]}
+            optionLabel="label"
             optionValue="id"
             className="w-full"
             placeholder="Select team"

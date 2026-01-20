@@ -32,7 +32,7 @@ export function KartCard({ kart, onClick }: KartCardProps) {
           boxShadow: `0 0 16px ${statusColor}cc`,
         }}
       >
-        {kart.team?.number ?? '?'}
+        {kart.team?.id ? kart.team.id : '?'}
       </div>
       <div className="space-y-3">
         <div className="text-sm font-semibold text-slate-300">#{kart.id}</div>

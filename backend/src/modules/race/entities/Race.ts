@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany, OneToOne } from 'typeorm';
-import { Team } from '../../team/entities/Team';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { RaceTeam } from './RaceTeam';
 import type { Kart } from '../../kart/entities/Kart';
 import type { PitlaneConfig } from '../../pitlane/entities/PitlaneConfig';
 
@@ -14,13 +14,8 @@ export class Race {
   @Column({ type: 'date' })
   date!: string;
 
-  @ManyToMany(() => Team, { eager: false })
-  @JoinTable({
-    name: 'race_teams',
-    joinColumn: { name: 'race_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'team_id', referencedColumnName: 'id' }
-  })
-  teams!: Team[];
+  @OneToMany(() => RaceTeam, (raceTeam) => raceTeam.race)
+  raceTeams!: RaceTeam[];
 
   // Relations defined from the other side
   // karts: Kart[] - defined in Kart entity with @ManyToOne

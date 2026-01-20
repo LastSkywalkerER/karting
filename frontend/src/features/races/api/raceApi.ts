@@ -42,11 +42,15 @@ export async function deleteRace(id: number): Promise<{ success: boolean; messag
   return response.json();
 }
 
-export async function addTeamToRace(raceId: number, teamId: number): Promise<{ success: boolean; message?: string; error?: string }> {
+export async function addTeamToRace(
+  raceId: number,
+  teamId: number,
+  number: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
   const response = await fetch(`${API_BASE}/${raceId}/teams`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ teamId }),
+    body: JSON.stringify({ teamId, number }),
   });
   return response.json();
 }

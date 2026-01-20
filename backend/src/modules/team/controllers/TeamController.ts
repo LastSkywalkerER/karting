@@ -10,14 +10,14 @@ export class TeamController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { name, number } = req.body;
+      const { name } = req.body;
 
-      if (!name || !number) {
-        res.status(400).json({ success: false, error: 'Name and number are required' });
+      if (!name) {
+        res.status(400).json({ success: false, error: 'Name is required' });
         return;
       }
 
-      const team = await this.service.createTeam({ name, number });
+      const team = await this.service.createTeam({ name });
       res.status(201).json({ success: true, data: team });
     } catch (error) {
       console.error('Error creating team:', error);
@@ -73,8 +73,8 @@ export class TeamController {
         return;
       }
 
-      const { name, number } = req.body;
-      const team = await this.service.updateTeam(id, { name, number });
+      const { name } = req.body;
+      const team = await this.service.updateTeam(id, { name });
       
       if (!team) {
         res.status(404).json({ success: false, error: 'Team not found' });

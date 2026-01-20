@@ -1,6 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany, Index } from 'typeorm';
-import type { Race } from '../../race/entities/Race';
-import type { Kart } from '../../kart/entities/Kart';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { RaceTeam } from '../../race/entities/RaceTeam';
 
 @Entity('teams')
 export class Team {
@@ -10,11 +9,9 @@ export class Team {
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
-  @Index()
-  number!: string;
+  @OneToMany(() => RaceTeam, (raceTeam) => raceTeam.team)
+  raceTeams!: RaceTeam[];
 
   // Relations will be defined from the other side
-  // races: Race[] - defined in Race entity with @ManyToMany
   // karts: Kart[] - defined in Kart entity with @ManyToOne
 }

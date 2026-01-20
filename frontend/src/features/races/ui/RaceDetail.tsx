@@ -28,6 +28,8 @@ export function RaceDetail({
   onViewPitlane,
   availableTeamsCount,
 }: RaceDetailProps) {
+  const raceTeams = race.raceTeams ?? [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Teams Section */}
@@ -43,20 +45,20 @@ export function RaceDetail({
           />
         </div>
         
-        {race.teams?.length === 0 ? (
+        {raceTeams.length === 0 ? (
           <p className="text-slate-500">No teams added yet</p>
         ) : (
           <div className="space-y-2">
-            {race.teams?.map((team) => (
+            {raceTeams.map((entry) => (
               <div
-                key={team.id}
+                key={`${entry.raceId}-${entry.teamId}`}
                 className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm">
-                    {team.number}
+                    {entry.number ?? '?'}
                   </div>
-                  <span className="text-white">{team.name}</span>
+                  <span className="text-white">{entry.team.name}</span>
                 </div>
                 <Button
                   icon="pi pi-times"
@@ -64,7 +66,7 @@ export function RaceDetail({
                   text
                   severity="danger"
                   size="small"
-                  onClick={() => onRemoveTeam(team.id)}
+                  onClick={() => onRemoveTeam(entry.teamId)}
                 />
               </div>
             ))}

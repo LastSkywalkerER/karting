@@ -6,6 +6,7 @@ import fs from 'fs';
 // Import all entities
 import { Team } from '../../modules/team/entities/Team';
 import { Race } from '../../modules/race/entities/Race';
+import { RaceTeam } from '../../modules/race/entities/RaceTeam';
 import { Kart } from '../../modules/kart/entities/Kart';
 import { PitlaneConfig } from '../../modules/pitlane/entities/PitlaneConfig';
 import { PitlaneCurrent } from '../../modules/pitlane/entities/PitlaneCurrent';
@@ -27,7 +28,7 @@ const getDbPath = (): string => {
 export const AppDataSource = new DataSource({
   type: 'better-sqlite3',
   database: getDbPath(),
-  entities: [Team, Race, Kart, PitlaneConfig, PitlaneCurrent, PitlaneHistory],
+  entities: [Team, Race, RaceTeam, Kart, PitlaneConfig, PitlaneCurrent, PitlaneHistory],
   synchronize: process.env.NODE_ENV !== 'production', // Auto-sync in development
   logging: process.env.NODE_ENV !== 'production',
 });

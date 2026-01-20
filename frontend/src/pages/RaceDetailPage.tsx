@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Dialog, InputNumber, Select } from '@/shared/ui';
+import { Button, Dialog, InputNumber, InputText, Select } from '@/shared/ui';
 import { fetchRaceById, addTeamToRace, removeTeamFromRace, RaceDetail } from '@/features/races';
 import { fetchTeams } from '@/features/teams';
 import { fetchKartsByRace, createKartsBulk } from '@/features/karts';
@@ -26,6 +26,7 @@ export function RaceDetailPage() {
   
   // Form data
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [teamNumber, setTeamNumber] = useState('');
   const [kartsCount, setKartsCount] = useState<number>(10);
   const [pitlaneFormData, setPitlaneFormData] = useState({ linesCount: 4, queueSize: 1 });
 
@@ -65,16 +66,17 @@ export function RaceDetailPage() {
   }, [id]);
 
   const availableTeams = allTeams.filter(
-    (team) => !race?.teams?.some((t) => t.id === team.id)
+    (team) => !race?.raceTeams?.some((entry) => entry.teamId === team.id)
   );
 
   const handleAddTeam = async () => {
-    if (!race || !selectedTeamId) return;
+    if (!race || !selectedTeamId || !teamNumber.trim()) return;
     
     try {
-      await addTeamToRace(race.id, selectedTeamId);
+      await addTeamToRace(race.id, selectedTeamId, teamNumber.trim());
       setAddTeamDialogVisible(false);
       setSelectedTeamId(null);
+      setTeamNumber('');
       loadData();
     } catch (error) {
       console.error('Failed to add team:', error);
@@ -180,7 +182,11 @@ export function RaceDetailPage() {
       {/* Add Team Dialog */}
       <Dialog
         visible={addTeamDialogVisible}
-        onHide={() => setAddTeamDialogVisible(false)}
+        onHide={() => {
+          setAddTeamDialogVisible(false);
+          setSelectedTeamId(null);
+          setTeamNumber('');
+        }}
         header="Add Team to Race"
         style={{ width: '400px' }}
       >
@@ -199,6 +205,17 @@ export function RaceDetailPage() {
               className="w-full"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Team Number
+            </label>
+            <InputText
+              value={teamNumber}
+              onChange={(e) => setTeamNumber(e.target.value)}
+              className="w-full"
+              placeholder="e.g., 42"
+            />
+          </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button
               label="Cancel"
@@ -208,7 +225,7 @@ export function RaceDetailPage() {
             <Button
               label="Add"
               onClick={handleAddTeam}
-              disabled={!selectedTeamId}
+              disabled={!selectedTeamId || !teamNumber.trim()}
             />
           </div>
         </div>

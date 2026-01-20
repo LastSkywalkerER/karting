@@ -1,6 +1,6 @@
 import { RaceRepository } from '../repositories/RaceRepository';
 import { Race } from '../entities/Race';
-import { Team } from '../../team/entities/Team';
+import { RaceTeam } from '../entities/RaceTeam';
 
 export class RaceService {
   private repository: RaceRepository;
@@ -39,15 +39,15 @@ export class RaceService {
     await this.repository.delete(id);
   }
 
-  async addTeamToRace(raceId: number, teamId: number): Promise<void> {
-    await this.repository.addTeam(raceId, teamId);
+  async addTeamToRace(raceId: number, teamId: number, number: string): Promise<void> {
+    await this.repository.addTeam(raceId, teamId, number);
   }
 
   async removeTeamFromRace(raceId: number, teamId: number): Promise<void> {
     await this.repository.removeTeam(raceId, teamId);
   }
 
-  async getRaceTeams(raceId: number): Promise<Team[]> {
+  async getRaceTeams(raceId: number): Promise<RaceTeam[]> {
     return await this.repository.getTeams(raceId);
   }
 }

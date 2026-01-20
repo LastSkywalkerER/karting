@@ -1,10 +1,17 @@
 import { Team } from './team';
 
+export interface RaceTeam {
+  raceId: number;
+  teamId: number;
+  number: string | null;
+  team: Team;
+}
+
 export interface Race {
   id: number;
   name: string;
   date: string;
-  teams: Team[];
+  raceTeams: RaceTeam[];
 }
 
 export interface CreateRaceRequest {
@@ -19,6 +26,7 @@ export interface UpdateRaceRequest {
 
 export interface AddTeamToRaceRequest {
   teamId: number;
+  number: string;
 }
 
 export interface RaceResponse {

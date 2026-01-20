@@ -9,7 +9,7 @@ export class TeamRepository {
     this.repository = AppDataSource.getRepository(Team);
   }
 
-  async create(data: { name: string; number: string }): Promise<Team> {
+  async create(data: { name: string }): Promise<Team> {
     const team = this.repository.create(data);
     return await this.repository.save(team);
   }
@@ -18,15 +18,11 @@ export class TeamRepository {
     return await this.repository.findOneBy({ id });
   }
 
-  async findByNumber(number: string): Promise<Team | null> {
-    return await this.repository.findOneBy({ number });
-  }
-
   async findAll(): Promise<Team[]> {
-    return await this.repository.find({ order: { number: 'ASC' } });
+    return await this.repository.find({ order: { name: 'ASC' } });
   }
 
-  async update(id: number, data: Partial<{ name: string; number: string }>): Promise<Team | null> {
+  async update(id: number, data: Partial<{ name: string }>): Promise<Team | null> {
     await this.repository.update(id, data);
     return await this.findById(id);
   }

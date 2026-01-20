@@ -198,10 +198,14 @@ export function KartsPage() {
     setRemoveDialogVisible(true);
   };
 
-  const selectedRace = races.find(r => r.id === selectedRaceId);
-  const raceTeams = selectedRace?.teams || [];
-  const availableTeamsCount = raceTeams.filter((team) => {
-    const teamKarts = karts.filter((kart) => kart.teamId === team.id);
+  const selectedRace = races.find((r) => r.id === selectedRaceId);
+  const raceTeams = selectedRace?.raceTeams || [];
+  const teamOptions = raceTeams.map((entry) => ({
+    id: entry.teamId,
+    label: `${entry.number ?? '?'} - ${entry.team.name}`,
+  }));
+  const availableTeamsCount = raceTeams.filter((entry) => {
+    const teamKarts = karts.filter((kart) => kart.teamId === entry.teamId);
     if (teamKarts.length === 0) {
       return false;
     }
@@ -354,7 +358,7 @@ export function KartsPage() {
         formData={editFormData}
         onFormChange={setEditFormData}
         onSave={handleSaveKart}
-        teams={raceTeams}
+        teams={teamOptions}
       />
 
       {/* Add Kart to Pitlane Dialog */}
@@ -366,7 +370,7 @@ export function KartsPage() {
           formData={addFormData}
           onFormChange={setAddFormData}
           onAdd={handleAddKartToPitlane}
-          teams={raceTeams}
+          teams={teamOptions}
         />
       )}
 
@@ -401,8 +405,8 @@ export function KartsPage() {
             <Select
               value={removeTeamId}
               onChange={(e) => setRemoveTeamId(e.value)}
-              options={[{ id: null, name: 'None' }, ...raceTeams]}
-              optionLabel="name"
+              options={[{ id: null, label: 'None' }, ...teamOptions]}
+              optionLabel="label"
               optionValue="id"
               className="w-full"
             />

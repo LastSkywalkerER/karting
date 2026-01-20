@@ -5,8 +5,8 @@ interface TeamFormProps {
   visible: boolean;
   onHide: () => void;
   editingTeam: Team | null;
-  formData: { name: string; number: string };
-  onFormChange: (data: { name: string; number: string }) => void;
+  formData: { name: string };
+  onFormChange: (data: { name: string }) => void;
   onSave: () => void;
 }
 
@@ -28,17 +28,6 @@ export function TeamForm({
       <div className="flex flex-col gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">
-            Team Number
-          </label>
-          <InputText
-            value={formData.number}
-            onChange={(e) => onFormChange({ ...formData, number: e.target.value })}
-            className="w-full"
-            placeholder="e.g., 42"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
             Team Name
           </label>
           <InputText
@@ -57,7 +46,7 @@ export function TeamForm({
           <Button
             label={editingTeam ? 'Update' : 'Create'}
             onClick={onSave}
-            disabled={!formData.name || !formData.number}
+            disabled={!formData.name}
           />
         </div>
       </div>

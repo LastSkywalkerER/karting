@@ -1,5 +1,4 @@
 import { Button, Dialog, Select } from '@/shared/ui';
-import type { Team } from '@/shared/types/team';
 import type { PitlaneConfig } from '@/shared/types/pitlane';
 
 interface PitlaneEntryFormProps {
@@ -15,7 +14,7 @@ interface PitlaneEntryFormProps {
     lineNumber: number;
   }) => void;
   onAdd: () => void;
-  teams: Team[];
+  teams: { id: number; label: string }[];
 }
 
 export function PitlaneEntryForm({
@@ -43,7 +42,7 @@ export function PitlaneEntryForm({
             value={formData.teamId}
             onChange={(e) => onFormChange({ ...formData, teamId: e.value })}
             options={teams}
-            optionLabel="name"
+            optionLabel="label"
             optionValue="id"
             placeholder="Select team"
             className="w-full"

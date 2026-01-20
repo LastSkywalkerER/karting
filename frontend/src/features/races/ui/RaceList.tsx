@@ -58,9 +58,9 @@ export function RaceList({ races, loading, onRaceClick, onDelete }: RaceListProp
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-white">{race.name}</h3>
             <p className="text-slate-400 text-sm">{formatDate(race.date)}</p>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <i className="pi pi-users" />
-            <span>{race.teams?.length || 0} teams</span>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <i className="pi pi-users" />
+              <span>{race.raceTeams?.length || 0} teams</span>
             </div>
           </div>
         </div>

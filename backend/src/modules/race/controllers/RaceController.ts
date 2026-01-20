@@ -118,13 +118,14 @@ export class RaceController {
         return;
       }
 
-      const { teamId } = req.body;
-      if (!teamId) {
-        res.status(400).json({ success: false, error: 'teamId is required' });
+      const { teamId, number } = req.body;
+      const numberValue = String(number || '').trim();
+      if (!teamId || !numberValue) {
+        res.status(400).json({ success: false, error: 'teamId and number are required' });
         return;
       }
 
-      await this.service.addTeamToRace(raceId, teamId);
+      await this.service.addTeamToRace(raceId, teamId, numberValue);
       res.json({ success: true, message: 'Team added to race' });
     } catch (error) {
       console.error('Error adding team to race:', error);

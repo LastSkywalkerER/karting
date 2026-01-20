@@ -8,7 +8,7 @@ export function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [formData, setFormData] = useState({ name: '', number: '' });
+  const [formData, setFormData] = useState({ name: '' });
 
   const loadTeams = async () => {
     setLoading(true);
@@ -30,13 +30,13 @@ export function TeamsPage() {
 
   const openCreateDialog = () => {
     setEditingTeam(null);
-    setFormData({ name: '', number: '' });
+    setFormData({ name: '' });
     setDialogVisible(true);
   };
 
   const openEditDialog = (team: Team) => {
     setEditingTeam(team);
-    setFormData({ name: team.name, number: team.number });
+    setFormData({ name: team.name });
     setDialogVisible(true);
   };
 

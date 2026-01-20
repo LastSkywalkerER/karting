@@ -8,13 +8,7 @@ export class TeamService {
     this.repository = new TeamRepository();
   }
 
-  async createTeam(data: { name: string; number: string }): Promise<Team> {
-    // Check if team with this number already exists
-    const existing = await this.repository.findByNumber(data.number);
-    if (existing) {
-      throw new Error(`Team with number ${data.number} already exists`);
-    }
-
+  async createTeam(data: { name: string }): Promise<Team> {
     return await this.repository.create(data);
   }
 
@@ -22,23 +16,11 @@ export class TeamService {
     return await this.repository.findById(id);
   }
 
-  async getTeamByNumber(number: string): Promise<Team | null> {
-    return await this.repository.findByNumber(number);
-  }
-
   async getAllTeams(): Promise<Team[]> {
     return await this.repository.findAll();
   }
 
-  async updateTeam(id: number, data: Partial<{ name: string; number: string }>): Promise<Team | null> {
-    // If updating number, check it's not taken by another team
-    if (data.number) {
-      const existing = await this.repository.findByNumber(data.number);
-      if (existing && existing.id !== id) {
-        throw new Error(`Team with number ${data.number} already exists`);
-      }
-    }
-
+  async updateTeam(id: number, data: Partial<{ name: string }>): Promise<Team | null> {
     return await this.repository.update(id, data);
   }
 
