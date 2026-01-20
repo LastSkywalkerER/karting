@@ -7,7 +7,7 @@ interface PitlaneViewProps {
   currentState: PitlaneCurrent[];
   onAddKart: () => void;
   onRemoveKart: (entry: PitlaneCurrent) => void;
-  availableKartsCount: number;
+  availableTeamsCount: number;
   teamsCount: number;
 }
 
@@ -16,7 +16,7 @@ export function PitlaneView({
   currentState,
   onAddKart,
   onRemoveKart,
-  availableKartsCount,
+  availableTeamsCount,
   teamsCount,
 }: PitlaneViewProps) {
   const getStatusColor = (status?: number) =>
@@ -37,7 +37,7 @@ export function PitlaneView({
           label="Add Kart to Pitlane"
           icon="pi pi-plus"
           onClick={onAddKart}
-          disabled={availableKartsCount === 0 || teamsCount === 0}
+          disabled={availableTeamsCount === 0 || teamsCount === 0}
         />
       </div>
 

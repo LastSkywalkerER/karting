@@ -37,9 +37,7 @@ export function PitlanePage() {
   // Form data
   const [addFormData, setAddFormData] = useState({
     teamId: null as number | null,
-    kartId: null as number | null,
     lineNumber: 1,
-    assignTeamIdToOldKart: null as number | null,
   });
   const [configFormData, setConfigFormData] = useState({ linesCount: 4, queueSize: 1 });
   const [removeTeamId, setRemoveTeamId] = useState<number | null>(null);
@@ -109,18 +107,16 @@ export function PitlanePage() {
   };
 
   const handleAddKart = async () => {
-    if (!pitlaneConfig || !addFormData.teamId || !addFormData.kartId) return;
+    if (!pitlaneConfig || !addFormData.teamId) return;
 
     try {
       await addKartToPitlane({
         pitlaneConfigId: pitlaneConfig.id,
         teamId: addFormData.teamId,
-        kartId: addFormData.kartId,
         lineNumber: addFormData.lineNumber,
-        assignTeamIdToOldKart: addFormData.assignTeamIdToOldKart || undefined,
       });
       setAddKartDialogVisible(false);
-      setAddFormData({ teamId: null, kartId: null, lineNumber: 1, assignTeamIdToOldKart: null });
+      setAddFormData({ teamId: null, lineNumber: 1 });
       loadData();
     } catch (error) {
       console.error('Failed to add kart:', error);
@@ -165,7 +161,13 @@ export function PitlanePage() {
 
   const selectedRace = races.find((r) => r.id === selectedRaceId);
   const raceTeams = selectedRace?.teams || [];
-  const availableKarts = karts.filter(k => !currentState.some(c => c.kartId === k.id));
+  const availableTeamsCount = raceTeams.filter((team) => {
+    const teamKarts = karts.filter((kart) => kart.teamId === team.id);
+    if (teamKarts.length === 0) {
+      return false;
+    }
+    return teamKarts.some((kart) => !currentState.some((entry) => entry.kartId === kart.id));
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -213,11 +215,11 @@ export function PitlanePage() {
               config={pitlaneConfig}
               currentState={currentState}
               onAddKart={() => {
-                setAddFormData({ teamId: null, kartId: null, lineNumber: 1, assignTeamIdToOldKart: null });
+                setAddFormData({ teamId: null, lineNumber: 1 });
                 setAddKartDialogVisible(true);
               }}
               onRemoveKart={openRemoveDialog}
-              availableKartsCount={availableKarts.length}
+              availableTeamsCount={availableTeamsCount}
               teamsCount={raceTeams.length}
             />
           </TabPanel>
@@ -278,7 +280,6 @@ export function PitlanePage() {
           onFormChange={setAddFormData}
           onAdd={handleAddKart}
           teams={raceTeams}
-          availableKarts={availableKarts}
         />
       )}
 

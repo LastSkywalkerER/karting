@@ -4,16 +4,19 @@ import { PitlaneHistoryRepository } from '../repositories/PitlaneHistoryReposito
 import { PitlaneConfig } from '../entities/PitlaneConfig';
 import { PitlaneCurrent } from '../entities/PitlaneCurrent';
 import { PitlaneHistory } from '../entities/PitlaneHistory';
+import { KartRepository } from '../../kart/repositories/KartRepository';
 
 export class PitlaneService {
   private configRepository: PitlaneConfigRepository;
   private currentRepository: PitlaneCurrentRepository;
   private historyRepository: PitlaneHistoryRepository;
+  private kartRepository: KartRepository;
 
   constructor() {
     this.configRepository = new PitlaneConfigRepository();
     this.currentRepository = new PitlaneCurrentRepository();
     this.historyRepository = new PitlaneHistoryRepository();
+    this.kartRepository = new KartRepository();
   }
 
   // Config methods
@@ -69,9 +72,7 @@ export class PitlaneService {
   async addKartToPitlane(
     configId: number,
     teamId: number,
-    kartId: number,
-    lineNumber: number,
-    assignTeamIdToOldKart?: number
+    lineNumber: number
   ): Promise<void> {
     // Validate line number
     const config = await this.configRepository.findById(configId);
@@ -82,7 +83,23 @@ export class PitlaneService {
       throw new Error(`Line number must be between 1 and ${config.linesCount}`);
     }
 
-    await this.currentRepository.addKart(configId, teamId, kartId, lineNumber, assignTeamIdToOldKart);
+    const teamKarts = await this.kartRepository.findByTeamAndRace(teamId, config.raceId);
+    if (teamKarts.length === 0) {
+      throw new Error('Team has no assigned kart');
+    }
+
+    const currentEntries = await this.currentRepository.findByConfig(configId);
+    const currentKartIds = new Set(currentEntries.map((entry) => entry.kartId));
+    const availableTeamKarts = teamKarts.filter((kart) => !currentKartIds.has(kart.id));
+
+    if (availableTeamKarts.length === 0) {
+      throw new Error('Team current kart is already in pitlane');
+    }
+    if (availableTeamKarts.length > 1) {
+      throw new Error('Team has multiple assigned karts');
+    }
+
+    await this.currentRepository.addKart(configId, teamId, availableTeamKarts[0].id, lineNumber);
   }
 
   async removeKartFromPitlane(id: number, teamId?: number): Promise<void> {

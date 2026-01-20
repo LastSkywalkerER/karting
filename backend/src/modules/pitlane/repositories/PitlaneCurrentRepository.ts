@@ -38,8 +38,7 @@ export class PitlaneCurrentRepository {
     configId: number,
     teamId: number,
     kartId: number,
-    lineNumber: number,
-    assignTeamIdToOldKart?: number
+    lineNumber: number
   ): Promise<void> {
     // Get pitlane config to know queue size
     const config = await this.configRepository.findOneBy({ id: configId });
@@ -70,10 +69,8 @@ export class PitlaneCurrentRepository {
       });
       await this.historyRepository.save(historyEntry);
 
-      // Assign team to old kart if specified
-      if (assignTeamIdToOldKart !== undefined) {
-        await this.kartRepository.update(firstEntry.kartId, { teamId: assignTeamIdToOldKart });
-      }
+      // Assign old kart back to the same team
+      await this.kartRepository.update(firstEntry.kartId, { teamId: firstEntry.teamId });
 
       // Delete the first entry from current
       await this.repository.delete(firstEntry.id);

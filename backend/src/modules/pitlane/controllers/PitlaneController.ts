@@ -107,17 +107,17 @@ export class PitlaneController {
 
   async addKart(req: Request, res: Response): Promise<void> {
     try {
-      const { pitlaneConfigId, teamId, kartId, lineNumber, assignTeamIdToOldKart } = req.body;
+      const { pitlaneConfigId, teamId, lineNumber } = req.body;
 
-      if (!pitlaneConfigId || !teamId || !kartId || !lineNumber) {
+      if (!pitlaneConfigId || !teamId || !lineNumber) {
         res.status(400).json({ 
           success: false, 
-          error: 'pitlaneConfigId, teamId, kartId, and lineNumber are required' 
+          error: 'pitlaneConfigId, teamId, and lineNumber are required' 
         });
         return;
       }
 
-      await this.service.addKartToPitlane(pitlaneConfigId, teamId, kartId, lineNumber, assignTeamIdToOldKart);
+      await this.service.addKartToPitlane(pitlaneConfigId, teamId, lineNumber);
       res.json({ success: true, message: 'Kart added to pitlane' });
     } catch (error) {
       console.error('Error adding kart to pitlane:', error);

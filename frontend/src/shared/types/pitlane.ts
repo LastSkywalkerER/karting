@@ -47,9 +47,7 @@ export interface UpdatePitlaneConfigRequest {
 export interface AddKartToPitlaneRequest {
   pitlaneConfigId: number;
   teamId: number;
-  kartId: number;
   lineNumber: number;
-  assignTeamIdToOldKart?: number;
 }
 
 export interface RemoveKartFromPitlaneRequest {

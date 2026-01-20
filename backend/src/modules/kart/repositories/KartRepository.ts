@@ -53,6 +53,13 @@ export class KartRepository {
     });
   }
 
+  async findByTeamAndRace(teamId: number, raceId: number): Promise<Kart[]> {
+    return await this.repository.find({
+      where: { teamId, raceId },
+      relations: ['race']
+    });
+  }
+
   async update(id: number, data: Partial<{ status: number; teamId: number | null }>): Promise<Kart | null> {
     await this.repository.update(id, data);
     return await this.findById(id);
