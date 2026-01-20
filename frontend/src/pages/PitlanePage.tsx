@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Dialog, Select, TabPanel, TabView } from '@/shared/ui';
 import { fetchRaces } from '@/features/races';
-import { fetchKartsByRace } from '@/features/karts';
+import { fetchKartsByRace, updateKart } from '@/features/karts';
 import {
   fetchPitlaneConfig,
   fetchPitlaneCurrent,
@@ -16,7 +16,14 @@ import {
 } from '@/features/pitlane';
 import type { Race } from '@/shared/types/race';
 import type { Kart } from '@/shared/types/kart';
+import { KART_STATUS_COLORS, KART_STATUS_LABELS } from '@/shared/types/kart';
 import type { PitlaneConfig, PitlaneCurrent, PitlaneHistory } from '@/shared/types/pitlane';
+
+const STATUS_OPTIONS = Object.entries(KART_STATUS_LABELS).map(([value, label]) => ({
+  value: Number(value),
+  label,
+  color: KART_STATUS_COLORS[Number(value)],
+}));
 
 export function PitlanePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -41,6 +48,7 @@ export function PitlanePage() {
   });
   const [configFormData, setConfigFormData] = useState({ linesCount: 4, queueSize: 1 });
   const [removeTeamId, setRemoveTeamId] = useState<number | null>(null);
+  const [removeKartStatus, setRemoveKartStatus] = useState<number>(1);
 
   useEffect(() => {
     const loadRaces = async () => {
@@ -127,13 +135,32 @@ export function PitlanePage() {
     if (!selectedEntry) return;
 
     try {
+      if (selectedEntry.kartId && removeKartStatus !== (selectedEntry.kart?.status ?? 1)) {
+        await updateKart(selectedEntry.kartId, { status: removeKartStatus });
+      }
       await removeKartFromPitlane(selectedEntry.id, removeTeamId ? { teamId: removeTeamId } : undefined);
       setRemoveDialogVisible(false);
       setSelectedEntry(null);
       setRemoveTeamId(null);
+      setRemoveKartStatus(1);
       loadData();
     } catch (error) {
       console.error('Failed to remove kart:', error);
+    }
+  };
+
+  const handleUpdateKartStatus = async () => {
+    if (!selectedEntry) return;
+
+    try {
+      await updateKart(selectedEntry.kartId, { status: removeKartStatus });
+      setRemoveDialogVisible(false);
+      setSelectedEntry(null);
+      setRemoveTeamId(null);
+      setRemoveKartStatus(1);
+      loadData();
+    } catch (error) {
+      console.error('Failed to update kart status:', error);
     }
   };
 
@@ -156,6 +183,7 @@ export function PitlanePage() {
   const openRemoveDialog = (entry: PitlaneCurrent) => {
     setSelectedEntry(entry);
     setRemoveTeamId(null);
+    setRemoveKartStatus(entry.kart?.status ?? 1);
     setRemoveDialogVisible(true);
   };
 
@@ -219,6 +247,10 @@ export function PitlanePage() {
                 setAddKartDialogVisible(true);
               }}
               onRemoveKart={openRemoveDialog}
+              onLineClick={(lineNumber) => {
+                setAddFormData({ teamId: null, lineNumber });
+                setAddKartDialogVisible(true);
+              }}
               availableTeamsCount={availableTeamsCount}
               teamsCount={raceTeams.length}
             />
@@ -296,6 +328,19 @@ export function PitlanePage() {
           </p>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
+              Kart Status
+            </label>
+            <Select
+              value={removeKartStatus}
+              onChange={(e) => setRemoveKartStatus(e.value ?? 1)}
+              options={STATUS_OPTIONS}
+              optionLabel="label"
+              optionValue="value"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Assign to Team (optional)
             </label>
             <Select
@@ -315,6 +360,12 @@ export function PitlanePage() {
               label="Cancel"
               severity="secondary"
               onClick={() => setRemoveDialogVisible(false)}
+            />
+            <Button
+              label="Update Status"
+              severity="secondary"
+              onClick={handleUpdateKartStatus}
+              disabled={!selectedEntry}
             />
             <Button
               label="Remove"

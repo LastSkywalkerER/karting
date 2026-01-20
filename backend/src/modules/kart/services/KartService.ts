@@ -46,6 +46,21 @@ export class KartService {
       throw new Error('Kart status must be between 1 and 5');
     }
 
+    const kart = await this.repository.findById(id);
+    if (!kart) {
+      return null;
+    }
+
+    if (data.teamId !== undefined && data.teamId !== kart.teamId) {
+      if (data.teamId !== null) {
+        const existingTeamKarts = await this.repository.findByTeamAndRace(data.teamId, kart.raceId);
+        const existingTeamKart = existingTeamKarts.find((item) => item.id !== kart.id);
+        if (existingTeamKart) {
+          await this.repository.assignTeam(existingTeamKart.id, null);
+        }
+      }
+    }
+
     return await this.repository.update(id, data);
   }
 

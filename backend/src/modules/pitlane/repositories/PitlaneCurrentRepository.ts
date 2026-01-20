@@ -46,6 +46,13 @@ export class PitlaneCurrentRepository {
       throw new Error('Pitlane config not found');
     }
 
+    const existingEntry = await this.repository.findOne({
+      where: { pitlaneConfigId: configId, kartId }
+    });
+    if (existingEntry) {
+      throw new Error('Kart is already in pitlane');
+    }
+
     // Remove team assignment from the new kart (kart goes to pitlane, so it's no longer assigned to a team)
     await this.kartRepository.update(kartId, { teamId: null });
 
@@ -142,6 +149,18 @@ export class PitlaneCurrentRepository {
 
     // Assign team to kart if specified
     if (teamId !== undefined) {
+      const config = await this.configRepository.findOneBy({ id: configId });
+      if (!config) {
+        throw new Error('Pitlane config not found');
+      }
+
+      const existingTeamKart = await this.kartRepository.findOne({
+        where: { teamId, raceId: config.raceId }
+      });
+      if (existingTeamKart && existingTeamKart.id !== entry.kartId) {
+        await this.kartRepository.update(existingTeamKart.id, { teamId: null });
+      }
+
       await this.kartRepository.update(entry.kartId, { teamId });
     }
 
@@ -201,6 +220,18 @@ export class PitlaneCurrentRepository {
 
     // Assign team to kart if specified
     if (teamId !== undefined) {
+      const config = await this.configRepository.findOneBy({ id: entry.pitlaneConfigId });
+      if (!config) {
+        throw new Error('Pitlane config not found');
+      }
+
+      const existingTeamKart = await this.kartRepository.findOne({
+        where: { teamId, raceId: config.raceId }
+      });
+      if (existingTeamKart && existingTeamKart.id !== entry.kartId) {
+        await this.kartRepository.update(existingTeamKart.id, { teamId: null });
+      }
+
       await this.kartRepository.update(entry.kartId, { teamId });
     }
 

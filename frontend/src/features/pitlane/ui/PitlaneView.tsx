@@ -7,6 +7,7 @@ interface PitlaneViewProps {
   currentState: PitlaneCurrent[];
   onAddKart: () => void;
   onRemoveKart: (entry: PitlaneCurrent) => void;
+  onLineClick?: (lineNumber: number) => void;
   availableTeamsCount: number;
   teamsCount: number;
 }
@@ -16,6 +17,7 @@ export function PitlaneView({
   currentState,
   onAddKart,
   onRemoveKart,
+  onLineClick,
   availableTeamsCount,
   teamsCount,
 }: PitlaneViewProps) {
@@ -46,6 +48,16 @@ export function PitlaneView({
           <div
             key={lineNumber}
             className="bg-slate-900 rounded-xl border border-slate-800 p-4"
+            onClick={() => onLineClick?.(Number(lineNumber))}
+            role={onLineClick ? 'button' : undefined}
+            tabIndex={onLineClick ? 0 : undefined}
+            onKeyDown={(event) => {
+              if (!onLineClick) return;
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onLineClick(Number(lineNumber));
+              }
+            }}
           >
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-3">
             Line<span className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm font-bold">
@@ -61,7 +73,10 @@ export function PitlaneView({
                   <div
                     key={entry.id}
                     className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                    onClick={() => onRemoveKart(entry)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemoveKart(entry);
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-slate-500 text-sm w-6">#{index + 1}</span>
