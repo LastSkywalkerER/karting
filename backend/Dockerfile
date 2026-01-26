@@ -17,8 +17,11 @@ COPY . .
 # Build TypeScript
 RUN yarn build
 
+# Create data directory for database
+RUN mkdir -p /app/data
+
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Run migrations and start the application
+CMD ["sh", "-c", "NODE_ENV=production yarn migration:run && yarn start"]

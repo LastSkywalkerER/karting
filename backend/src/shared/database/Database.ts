@@ -25,13 +25,20 @@ const getDbPath = (): string => {
   return defaultPath;
 };
 
-export const AppDataSource = new DataSource({
-  type: 'better-sqlite3',
+const dataSourceOptions = {
+  type: 'better-sqlite3' as const,
   database: getDbPath(),
   entities: [Team, Race, RaceTeam, Kart, PitlaneConfig, PitlaneCurrent, PitlaneHistory],
-  synchronize: process.env.NODE_ENV !== 'production', // Auto-sync in development
+  migrations: [path.join(process.cwd(), 'src/migrations/*.ts')],
+  migrationsTableName: 'migrations',
+  synchronize: false,
   logging: process.env.NODE_ENV !== 'production',
-});
+};
+
+export const AppDataSource = new DataSource(dataSourceOptions);
+
+// Default export for TypeORM CLI
+export default new DataSource(dataSourceOptions);
 
 export async function initializeDatabase(): Promise<DataSource> {
   if (!AppDataSource.isInitialized) {
