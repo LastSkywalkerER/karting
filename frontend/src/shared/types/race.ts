@@ -1,3 +1,4 @@
+import type { SyncFields } from '../db/database';
 import { Team } from './team';
 
 export interface RaceTeam {
@@ -13,6 +14,12 @@ export interface Race {
   date: string;
   raceTeams: RaceTeam[];
 }
+
+// Race with sync fields for IndexedDB
+export interface RaceWithSync extends Omit<Race, 'raceTeams'>, SyncFields {}
+
+// RaceTeam with sync fields for IndexedDB
+export interface RaceTeamWithSync extends Omit<RaceTeam, 'team'>, SyncFields {}
 
 export interface CreateRaceRequest {
   name: string;

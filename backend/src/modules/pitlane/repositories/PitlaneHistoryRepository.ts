@@ -31,12 +31,16 @@ export class PitlaneHistoryRepository {
     kartId: number;
     lineNumber: number;
     queuePosition: number;
-    enteredAt: Date;
-    exitedAt?: Date;
+    enteredAt: number;
+    exitedAt?: number;
   }): Promise<PitlaneHistory> {
+    const now = Date.now();
     const entry = this.repository.create({
       ...data,
-      exitedAt: data.exitedAt ?? new Date()
+      exitedAt: data.exitedAt ?? now,
+      updatedAt: now,
+      isDeleted: false,
+      deletedAt: null
     });
     return await this.repository.save(entry);
   }

@@ -25,11 +25,22 @@ export class PitlaneHistory {
   @Column({ name: 'queue_position', type: 'int' })
   queuePosition!: number;
 
-  @Column({ name: 'entered_at', type: 'datetime' })
-  enteredAt!: Date;
+  @Column({ name: 'entered_at', type: 'bigint' })
+  enteredAt!: number;
 
-  @Column({ name: 'exited_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-  exitedAt!: Date;
+  @Column({ name: 'exited_at', type: 'bigint' })
+  exitedAt!: number;
+
+  // Sync fields
+  @Column({ name: 'updated_at', type: 'bigint', default: () => "strftime('%s','now') * 1000" })
+  @Index()
+  updatedAt!: number;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @Column({ name: 'deleted_at', type: 'bigint', nullable: true })
+  deletedAt!: number | null;
 
   @ManyToOne(() => PitlaneConfig, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'pitlane_config_id' })

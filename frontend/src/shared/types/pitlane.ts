@@ -1,3 +1,4 @@
+import type { SyncFields } from '../db/database';
 import { Team } from './team';
 import { Kart } from './kart';
 
@@ -31,6 +32,16 @@ export interface PitlaneHistory {
   exitedAt: string;
   team?: Team;
   kart?: Kart;
+}
+
+// With sync fields for IndexedDB
+export interface PitlaneConfigWithSync extends PitlaneConfig, SyncFields {}
+export interface PitlaneCurrentWithSync extends Omit<PitlaneCurrent, 'team' | 'kart' | 'enteredAt'>, SyncFields {
+  enteredAt: number;
+}
+export interface PitlaneHistoryWithSync extends Omit<PitlaneHistory, 'team' | 'kart' | 'enteredAt' | 'exitedAt'>, SyncFields {
+  enteredAt: number;
+  exitedAt: number;
 }
 
 export interface CreatePitlaneConfigRequest {

@@ -1,3 +1,4 @@
+import type { SyncFields } from '../db/database';
 import { Team } from './team';
 import { Race } from './race';
 
@@ -9,6 +10,9 @@ export interface Kart {
   race?: Race;
   team?: Team | null;
 }
+
+// Kart with sync fields for IndexedDB
+export interface KartWithSync extends Omit<Kart, 'race' | 'team'>, SyncFields {}
 
 export interface CreateKartRequest {
   raceId: number;

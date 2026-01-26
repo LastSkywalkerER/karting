@@ -1,3 +1,5 @@
+import { raceService } from '../services/RaceService';
+import { syncManager } from '../../sync/services/SyncManager';
 import type {
   CreateRaceRequest,
   UpdateRaceRequest,
@@ -5,41 +7,59 @@ import type {
   RacesResponse,
 } from '@/shared/types/race';
 
-const API_BASE = '/api/races';
-
 export async function fetchRaces(): Promise<RacesResponse> {
-  const response = await fetch(API_BASE);
-  return response.json();
+  const result = await raceService.getAllRaces();
+  return {
+    success: result.success,
+    count: result.data?.length,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function fetchRaceById(id: number): Promise<RaceResponse> {
-  const response = await fetch(`${API_BASE}/${id}`);
-  return response.json();
+  const result = await raceService.getRaceById(id);
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function createRace(data: CreateRaceRequest): Promise<RaceResponse> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  const result = await raceService.createRace(data);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function updateRace(id: number, data: UpdateRaceRequest): Promise<RaceResponse> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  const result = await raceService.updateRace(id, data);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function deleteRace(id: number): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-  });
-  return response.json();
+  const result = await raceService.deleteRace(id);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    message: result.success ? 'Race deleted successfully' : undefined,
+    error: result.error,
+  };
 }
 
 export async function addTeamToRace(
@@ -47,17 +67,25 @@ export async function addTeamToRace(
   teamId: number,
   number: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/${raceId}/teams`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ teamId, number }),
-  });
-  return response.json();
+  const result = await raceService.addTeamToRace(raceId, teamId, number);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    message: result.success ? 'Team added to race successfully' : undefined,
+    error: result.error,
+  };
 }
 
 export async function removeTeamFromRace(raceId: number, teamId: number): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/${raceId}/teams/${teamId}`, {
-    method: 'DELETE',
-  });
-  return response.json();
+  const result = await raceService.removeTeamFromRace(raceId, teamId);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    message: result.success ? 'Team removed from race successfully' : undefined,
+    error: result.error,
+  };
 }

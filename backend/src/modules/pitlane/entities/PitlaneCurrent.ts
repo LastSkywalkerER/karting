@@ -26,8 +26,19 @@ export class PitlaneCurrent {
   @Column({ name: 'queue_position', type: 'int' })
   queuePosition!: number;
 
-  @Column({ name: 'entered_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-  enteredAt!: Date;
+  @Column({ name: 'entered_at', type: 'bigint' })
+  enteredAt!: number;
+
+  // Sync fields
+  @Column({ name: 'updated_at', type: 'bigint', default: () => "strftime('%s','now') * 1000" })
+  @Index()
+  updatedAt!: number;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @Column({ name: 'deleted_at', type: 'bigint', nullable: true })
+  deletedAt!: number | null;
 
   @ManyToOne(() => PitlaneConfig, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'pitlane_config_id' })

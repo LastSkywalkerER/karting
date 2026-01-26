@@ -64,6 +64,8 @@ export class PitlaneCurrentRepository {
       // Remove the first kart (queue_position = 0) and move to history
       const firstEntry = currentQueue[0];
       
+      const now = Date.now();
+      
       // Create history entry
       const historyEntry = this.historyRepository.create({
         pitlaneConfigId: firstEntry.pitlaneConfigId,
@@ -72,12 +74,15 @@ export class PitlaneCurrentRepository {
         lineNumber: firstEntry.lineNumber,
         queuePosition: firstEntry.queuePosition,
         enteredAt: firstEntry.enteredAt,
-        exitedAt: new Date()
+        exitedAt: now,
+        updatedAt: now,
+        isDeleted: false,
+        deletedAt: null
       });
       await this.historyRepository.save(historyEntry);
 
       // Assign old kart back to the same team
-      await this.kartRepository.update(firstEntry.kartId, { teamId: firstEntry.teamId });
+      await this.kartRepository.update(firstEntry.kartId, { teamId: firstEntry.teamId, updatedAt: now });
 
       // Delete the first entry from current
       await this.repository.delete(firstEntry.id);
@@ -85,7 +90,8 @@ export class PitlaneCurrentRepository {
       // Shift all positions up (decrease queue_position by 1)
       for (let i = 1; i < currentQueue.length; i++) {
         await this.repository.update(currentQueue[i].id, {
-          queuePosition: currentQueue[i].queuePosition - 1
+          queuePosition: currentQueue[i].queuePosition - 1,
+          updatedAt: now
         });
       }
 
@@ -96,10 +102,15 @@ export class PitlaneCurrentRepository {
         kartId,
         lineNumber,
         queuePosition: config.queueSize - 1,
-        enteredAt: new Date()
+        enteredAt: now,
+        updatedAt: now,
+        isDeleted: false,
+        deletedAt: null
       });
       await this.repository.save(newEntry);
     } else {
+      const now = Date.now();
+      
       // Queue is not full, find the first available position
       const occupiedPositions = currentQueue.map(e => e.queuePosition);
       let newPosition = 0;
@@ -114,7 +125,10 @@ export class PitlaneCurrentRepository {
         kartId,
         lineNumber,
         queuePosition: newPosition,
-        enteredAt: new Date()
+        enteredAt: now,
+        updatedAt: now,
+        isDeleted: false,
+        deletedAt: null
       });
       await this.repository.save(newEntry);
     }
@@ -135,6 +149,8 @@ export class PitlaneCurrentRepository {
       throw new Error('Pitlane entry not found');
     }
 
+    const now = Date.now();
+
     // Create history entry
     const historyEntry = this.historyRepository.create({
       pitlaneConfigId: entry.pitlaneConfigId,
@@ -143,7 +159,10 @@ export class PitlaneCurrentRepository {
       lineNumber: entry.lineNumber,
       queuePosition: entry.queuePosition,
       enteredAt: entry.enteredAt,
-      exitedAt: new Date()
+      exitedAt: now,
+      updatedAt: now,
+      isDeleted: false,
+      deletedAt: null
     });
     await this.historyRepository.save(historyEntry);
 
@@ -158,10 +177,10 @@ export class PitlaneCurrentRepository {
         where: { teamId, raceId: config.raceId }
       });
       if (existingTeamKart && existingTeamKart.id !== entry.kartId) {
-        await this.kartRepository.update(existingTeamKart.id, { teamId: null });
+        await this.kartRepository.update(existingTeamKart.id, { teamId: null, updatedAt: now });
       }
 
-      await this.kartRepository.update(entry.kartId, { teamId });
+      await this.kartRepository.update(entry.kartId, { teamId, updatedAt: now });
     }
 
     // Delete the entry
@@ -172,7 +191,8 @@ export class PitlaneCurrentRepository {
     for (const remainingEntry of remainingEntries) {
       if (remainingEntry.queuePosition > queuePosition) {
         await this.repository.update(remainingEntry.id, {
-          queuePosition: remainingEntry.queuePosition - 1
+          queuePosition: remainingEntry.queuePosition - 1,
+          updatedAt: now
         });
       }
     }
@@ -180,6 +200,7 @@ export class PitlaneCurrentRepository {
 
   async clearLine(configId: number, lineNumber: number): Promise<void> {
     const entries = await this.findByLine(configId, lineNumber);
+    const now = Date.now();
     
     for (const entry of entries) {
       // Create history entry for each
@@ -190,7 +211,10 @@ export class PitlaneCurrentRepository {
         lineNumber: entry.lineNumber,
         queuePosition: entry.queuePosition,
         enteredAt: entry.enteredAt,
-        exitedAt: new Date()
+        exitedAt: now,
+        updatedAt: now,
+        isDeleted: false,
+        deletedAt: null
       });
       await this.historyRepository.save(historyEntry);
     }
@@ -206,6 +230,8 @@ export class PitlaneCurrentRepository {
       throw new Error('Pitlane entry not found');
     }
 
+    const now = Date.now();
+
     // Create history entry
     const historyEntry = this.historyRepository.create({
       pitlaneConfigId: entry.pitlaneConfigId,
@@ -214,7 +240,10 @@ export class PitlaneCurrentRepository {
       lineNumber: entry.lineNumber,
       queuePosition: entry.queuePosition,
       enteredAt: entry.enteredAt,
-      exitedAt: new Date()
+      exitedAt: now,
+      updatedAt: now,
+      isDeleted: false,
+      deletedAt: null
     });
     await this.historyRepository.save(historyEntry);
 
@@ -229,10 +258,10 @@ export class PitlaneCurrentRepository {
         where: { teamId, raceId: config.raceId }
       });
       if (existingTeamKart && existingTeamKart.id !== entry.kartId) {
-        await this.kartRepository.update(existingTeamKart.id, { teamId: null });
+        await this.kartRepository.update(existingTeamKart.id, { teamId: null, updatedAt: now });
       }
 
-      await this.kartRepository.update(entry.kartId, { teamId });
+      await this.kartRepository.update(entry.kartId, { teamId, updatedAt: now });
     }
 
     // Delete the entry
@@ -243,7 +272,8 @@ export class PitlaneCurrentRepository {
     for (const remainingEntry of remainingEntries) {
       if (remainingEntry.queuePosition > entry.queuePosition) {
         await this.repository.update(remainingEntry.id, {
-          queuePosition: remainingEntry.queuePosition - 1
+          queuePosition: remainingEntry.queuePosition - 1,
+          updatedAt: now
         });
       }
     }

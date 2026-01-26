@@ -1,10 +1,7 @@
 import express, { Express } from 'express';
 
-// Import routes
-import { teamRoutes } from '../../modules/team/routes/teamRoutes';
-import { raceRoutes } from '../../modules/race/routes/raceRoutes';
-import { kartRoutes } from '../../modules/kart/routes/kartRoutes';
-import { pitlaneRoutes } from '../../modules/pitlane/routes/pitlaneRoutes';
+// Import sync route
+import { syncRoutes } from '../../modules/sync/routes/syncRoutes';
 
 export class ExpressServer {
   private app: Express;
@@ -17,7 +14,7 @@ export class ExpressServer {
   }
 
   private setupMiddleware(): void {
-    this.app.use(express.json());
+    this.app.use(express.json({ limit: '10mb' })); // Increased limit for sync payload
     
     // CORS middleware for development
     this.app.use((req, res, next) => {
@@ -37,18 +34,12 @@ export class ExpressServer {
       res.json({ status: 'ok' });
     });
 
-    // API routes
-    this.app.use('/api/teams', teamRoutes);
-    this.app.use('/api/races', raceRoutes);
-    this.app.use('/api/karts', kartRoutes);
-    this.app.use('/api/pitlanes', pitlaneRoutes);
+    // Sync API route (local-first architecture)
+    this.app.use('/api/sync', syncRoutes);
 
     // Debug: log all registered routes
     console.log('Registered API routes:');
-    console.log('  /api/teams');
-    console.log('  /api/races');
-    console.log('  /api/karts');
-    console.log('  /api/pitlanes');
+    console.log('  /api/sync');
   }
 
   start(): Promise<void> {

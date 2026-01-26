@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Navigation } from './Navigation';
+import { SyncStatusIndicator } from '@/features/sync';
 
 export function Layout() {
   return (
@@ -8,6 +9,7 @@ export function Layout() {
       <main className="flex-1 overflow-auto px-6 py-6">
         <Outlet />
       </main>
+      <SyncStatusIndicator />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn, PrimaryColumn, Unique } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, PrimaryColumn, Unique, Index } from 'typeorm';
 import { Race } from './Race';
 import { Team } from '../../team/entities/Team';
 
@@ -13,6 +13,17 @@ export class RaceTeam {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   number!: string | null;
+
+  // Sync fields
+  @Column({ name: 'updated_at', type: 'bigint', default: () => "strftime('%s','now') * 1000" })
+  @Index()
+  updatedAt!: number;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @Column({ name: 'deleted_at', type: 'bigint', nullable: true })
+  deletedAt!: number | null;
 
   @ManyToOne(() => Race, (race) => race.raceTeams, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'race_id' })

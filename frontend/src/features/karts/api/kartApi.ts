@@ -1,3 +1,5 @@
+import { kartService } from '../services/KartService';
+import { syncManager } from '../../sync/services/SyncManager';
 import type {
   CreateKartRequest,
   CreateKartsBulkRequest,
@@ -6,48 +8,70 @@ import type {
   KartsResponse,
 } from '@/shared/types/kart';
 
-const API_BASE = '/api/karts';
-
 export async function fetchKartsByRace(raceId: number): Promise<KartsResponse> {
-  const response = await fetch(`${API_BASE}?raceId=${raceId}`);
-  return response.json();
+  const result = await kartService.getKartsByRace(raceId);
+  return {
+    success: result.success,
+    count: result.data?.length,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function fetchKartById(id: number): Promise<KartResponse> {
-  const response = await fetch(`${API_BASE}/${id}`);
-  return response.json();
+  const result = await kartService.getKartById(id);
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function createKart(data: CreateKartRequest): Promise<KartResponse> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  const result = await kartService.createKart(data);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function createKartsBulk(data: CreateKartsBulkRequest): Promise<KartsResponse> {
-  const response = await fetch(`${API_BASE}/bulk`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  const result = await kartService.createManyKarts(data.raceId, data.count);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    count: result.data?.length,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function updateKart(id: number, data: UpdateKartRequest): Promise<KartResponse> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  const result = await kartService.updateKart(id, data);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    data: result.data,
+    error: result.error,
+  };
 }
 
 export async function deleteKart(id: number): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-  });
-  return response.json();
+  const result = await kartService.deleteKart(id);
+  if (result.success) {
+    syncManager.triggerSync();
+  }
+  return {
+    success: result.success,
+    message: result.success ? 'Kart deleted successfully' : undefined,
+    error: result.error,
+  };
 }
