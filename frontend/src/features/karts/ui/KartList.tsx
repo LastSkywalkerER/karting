@@ -5,9 +5,10 @@ interface KartListProps {
   karts: Kart[];
   loading: boolean;
   onKartClick: (kart: Kart) => void;
+  onStatusChange?: (kartId: number, status: number) => void;
 }
 
-export function KartList({ karts, loading, onKartClick }: KartListProps) {
+export function KartList({ karts, loading, onKartClick, onStatusChange }: KartListProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -28,7 +29,12 @@ export function KartList({ karts, loading, onKartClick }: KartListProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
       {karts.map((kart) => (
-        <KartCard key={kart.id} kart={kart} onClick={onKartClick} />
+        <KartCard 
+          key={kart.id} 
+          kart={kart} 
+          onClick={onKartClick}
+          onStatusChange={onStatusChange}
+        />
       ))}
     </div>
   );

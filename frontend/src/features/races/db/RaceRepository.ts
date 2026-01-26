@@ -211,7 +211,12 @@ export class RaceRepository {
     if (record.id) {
       const existing = await db.get('races', record.id);
       if (!existing || record.updatedAt > existing.updatedAt) {
-        await db.put('races', record);
+        // If record is deleted, remove it from local DB
+        if (record.isDeleted) {
+          await db.delete('races', record.id);
+        } else {
+          await db.put('races', record);
+        }
       }
     }
   }
@@ -220,7 +225,12 @@ export class RaceRepository {
     const db = await getDatabase();
     const existing = await db.get('race_teams', [record.raceId, record.teamId]);
     if (!existing || record.updatedAt > existing.updatedAt) {
-      await db.put('race_teams', record);
+      // If record is deleted, remove it from local DB
+      if (record.isDeleted) {
+        await db.delete('race_teams', [record.raceId, record.teamId]);
+      } else {
+        await db.put('race_teams', record);
+      }
     }
   }
 }

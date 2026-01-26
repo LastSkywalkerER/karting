@@ -47,7 +47,7 @@ export function PitlaneView({
         {Object.entries(lineData).map(([lineNumber, entries]) => (
           <div
             key={lineNumber}
-            className="bg-slate-900 rounded-xl border border-slate-800 p-4"
+            className={`bg-slate-900 rounded-xl border border-slate-800 p-4 ${onLineClick ? 'cursor-pointer' : ''}`}
             onClick={() => onLineClick?.(Number(lineNumber))}
             role={onLineClick ? 'button' : undefined}
             tabIndex={onLineClick ? 0 : undefined}

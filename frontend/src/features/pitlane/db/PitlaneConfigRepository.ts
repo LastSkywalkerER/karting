@@ -102,7 +102,12 @@ export class PitlaneConfigRepository {
     if (record.id) {
       const existing = await db.get('pitlane_configs', record.id);
       if (!existing || record.updatedAt > existing.updatedAt) {
-        await db.put('pitlane_configs', record);
+        // If record is deleted, remove it from local DB
+        if (record.isDeleted) {
+          await db.delete('pitlane_configs', record.id);
+        } else {
+          await db.put('pitlane_configs', record);
+        }
       }
     }
   }

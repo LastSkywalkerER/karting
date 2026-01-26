@@ -79,7 +79,12 @@ export class TeamRepository {
       const existing = await db.get('teams', record.id);
       // Only update if incoming record is newer
       if (!existing || record.updatedAt > existing.updatedAt) {
-        await db.put('teams', record);
+        // If record is deleted, remove it from local DB
+        if (record.isDeleted) {
+          await db.delete('teams', record.id);
+        } else {
+          await db.put('teams', record);
+        }
       }
     }
   }

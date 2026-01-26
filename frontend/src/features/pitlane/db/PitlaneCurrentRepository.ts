@@ -374,7 +374,12 @@ export class PitlaneCurrentRepository {
     if (record.id) {
       const existing = await db.get('pitlane_current', record.id);
       if (!existing || record.updatedAt > existing.updatedAt) {
-        await db.put('pitlane_current', record);
+        // If record is deleted, remove it from local DB
+        if (record.isDeleted) {
+          await db.delete('pitlane_current', record.id);
+        } else {
+          await db.put('pitlane_current', record);
+        }
       }
     }
   }

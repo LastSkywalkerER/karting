@@ -143,6 +143,15 @@ export function KartsPage() {
     }
   };
 
+  const handleQuickStatusChange = async (kartId: number, status: number) => {
+    try {
+      await updateKart(kartId, { status });
+      loadData();
+    } catch (error) {
+      console.error('Failed to update kart status:', error);
+    }
+  };
+
   const handleAddKarts = async () => {
     if (!selectedRaceId || kartsCount < 1) return;
     
@@ -300,7 +309,7 @@ export function KartsPage() {
               {Object.entries(lineData).map(([lineNumber, entries]) => (
                 <div
                   key={lineNumber}
-                  className="bg-slate-900/50 rounded-lg border border-slate-800 p-3"
+                  className="bg-slate-900/50 rounded-lg border border-slate-800 p-3 cursor-pointer"
                   onClick={() => {
                     setAddFormData({ teamId: null, lineNumber: Number(lineNumber) });
                     setAddKartDialogVisible(true);
@@ -324,7 +333,7 @@ export function KartsPage() {
                         <button
                           key={entry.id}
                           type="button"
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold transition-transform hover:scale-105"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold transition-transform hover:scale-105 cursor-pointer"
                           style={{
                             backgroundColor: getStatusColor(entry.kart?.status),
                             boxShadow: `0 0 12px ${getStatusColor(entry.kart?.status)}cc`,
@@ -361,6 +370,7 @@ export function KartsPage() {
           karts={karts}
           loading={loading}
           onKartClick={handleKartClick}
+          onStatusChange={handleQuickStatusChange}
         />
       )}
 

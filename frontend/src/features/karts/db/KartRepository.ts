@@ -193,7 +193,12 @@ export class KartRepository {
     if (record.id) {
       const existing = await db.get('karts', record.id);
       if (!existing || record.updatedAt > existing.updatedAt) {
-        await db.put('karts', record);
+        // If record is deleted, remove it from local DB
+        if (record.isDeleted) {
+          await db.delete('karts', record.id);
+        } else {
+          await db.put('karts', record);
+        }
       }
     }
   }

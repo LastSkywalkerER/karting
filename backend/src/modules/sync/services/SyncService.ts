@@ -69,6 +69,7 @@ export class SyncService {
       if (record.id) {
         const existing = await this.teamRepo.findOneBy({ id: record.id });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.teamRepo.save(record);
         }
       } else {
@@ -82,6 +83,7 @@ export class SyncService {
       if (record.id) {
         const existing = await this.raceRepo.findOneBy({ id: record.id });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.raceRepo.save(record);
         }
       } else {
@@ -97,6 +99,7 @@ export class SyncService {
           teamId: record.teamId,
         });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.raceTeamRepo.save(record);
         }
       }
@@ -107,6 +110,7 @@ export class SyncService {
       if (record.id) {
         const existing = await this.kartRepo.findOneBy({ id: record.id });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.kartRepo.save(record);
         }
       } else {
@@ -119,6 +123,7 @@ export class SyncService {
       if (record.id) {
         const existing = await this.pitlaneConfigRepo.findOneBy({ id: record.id });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.pitlaneConfigRepo.save(record);
         }
       } else {
@@ -134,6 +139,7 @@ export class SyncService {
       if (record.id) {
         const existing = await this.pitlaneHistoryRepo.findOneBy({ id: record.id });
         if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
+          // Save record (including isDeleted flag for soft delete)
           await this.pitlaneHistoryRepo.save(record);
         }
       } else {
