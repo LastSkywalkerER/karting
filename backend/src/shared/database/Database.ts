@@ -35,10 +35,9 @@ const dataSourceOptions = {
   logging: process.env.NODE_ENV !== 'production',
 };
 
-export const AppDataSource = new DataSource(dataSourceOptions);
-
-// Default export for TypeORM CLI
-export default new DataSource(dataSourceOptions);
+// Default export for TypeORM CLI (required - must be only one DataSource export)
+const AppDataSource = new DataSource(dataSourceOptions);
+export default AppDataSource;
 
 export async function initializeDatabase(): Promise<DataSource> {
   if (!AppDataSource.isInitialized) {

@@ -1,5 +1,5 @@
 import { Repository, MoreThan } from 'typeorm';
-import { AppDataSource } from '../../../shared/database/Database';
+import AppDataSource from '../../../shared/database/Database';
 import { Team } from '../../team/entities/Team';
 import { Race } from '../../race/entities/Race';
 import { RaceTeam } from '../../race/entities/RaceTeam';

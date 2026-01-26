@@ -1,5 +1,5 @@
 import { Repository } from 'typeorm';
-import { AppDataSource } from '../../../shared/database/Database';
+import AppDataSource from '../../../shared/database/Database';
 import { PitlaneConfig } from '../entities/PitlaneConfig';
 
 export class PitlaneConfigRepository {

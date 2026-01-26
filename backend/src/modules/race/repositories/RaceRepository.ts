@@ -1,5 +1,5 @@
 import { Repository } from 'typeorm';
-import { AppDataSource } from '../../../shared/database/Database';
+import AppDataSource from '../../../shared/database/Database';
 import { Race } from '../entities/Race';
 import { Team } from '../../team/entities/Team';
 import { RaceTeam } from '../entities/RaceTeam';
