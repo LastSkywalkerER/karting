@@ -25,18 +25,26 @@ const getDbPath = (): string => {
   return defaultPath;
 };
 
+// Determine migrations path based on whether we're running from dist or src
+const isCompiled = __dirname.includes('dist');
+const migrationsPath = isCompiled
+  ? path.join(__dirname, '../../migrations/*.js')
+  : path.join(process.cwd(), 'src/migrations/*.ts');
+
 const dataSourceOptions = {
   type: 'better-sqlite3' as const,
   database: getDbPath(),
   entities: [Team, Race, RaceTeam, Kart, PitlaneConfig, PitlaneCurrent, PitlaneHistory],
-  migrations: [path.join(process.cwd(), 'src/migrations/*.ts')],
+  migrations: [migrationsPath],
   migrationsTableName: 'migrations',
   synchronize: false,
   logging: process.env.NODE_ENV !== 'production',
 };
 
-// Default export for TypeORM CLI (required - must be only one DataSource export)
+// Create DataSource instance
 const AppDataSource = new DataSource(dataSourceOptions);
+
+// Default export for TypeORM CLI (required - must be only one DataSource export)
 export default AppDataSource;
 
 export async function initializeDatabase(): Promise<DataSource> {
