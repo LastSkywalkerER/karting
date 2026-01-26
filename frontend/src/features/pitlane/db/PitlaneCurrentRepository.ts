@@ -11,6 +11,12 @@ import {
 import type { PitlaneCurrent } from '@/shared/types/pitlane';
 
 export class PitlaneCurrentRepository {
+  async findEntryByKartId(kartId: number): Promise<PitlaneCurrentRecord | undefined> {
+    const db = await getDatabase();
+    const entries = await db.getAll('pitlane_current');
+    return entries.find((entry) => !entry.isDeleted && entry.kartId === kartId);
+  }
+
   async findByConfig(configId: number): Promise<PitlaneCurrent[]> {
     const db = await getDatabase();
     const entries = await db.getAllFromIndex('pitlane_current', 'pitlaneConfigId', configId);
@@ -113,84 +119,129 @@ export class PitlaneCurrentRepository {
 
     const timestamp = now();
 
-    // Check if queue is full
-    if (currentQueue.length >= queueSize) {
-      // Remove the first kart (queue_position = 0) and move to history
-      const firstEntry = currentQueue[0];
-
-      // Create history entry
-      const historyRecord: PitlaneHistoryRecord = {
-        pitlaneConfigId: firstEntry.pitlaneConfigId,
-        teamId: firstEntry.teamId,
-        kartId: firstEntry.kartId,
-        lineNumber: firstEntry.lineNumber,
-        queuePosition: firstEntry.queuePosition,
-        enteredAt: firstEntry.enteredAt,
-        exitedAt: timestamp,
-        ...createSyncFields(),
-      };
-      await db.add('pitlane_history', historyRecord);
-
-      // Assign old kart back to the same team
-      const oldKart = await db.get('karts', firstEntry.kartId);
-      if (oldKart && !oldKart.isDeleted) {
-        const updatedOldKart: KartRecord = {
-          ...oldKart,
-          teamId: firstEntry.teamId,
-          ...updateSyncFields(oldKart),
-        };
-        await db.put('karts', updatedOldKart);
-      }
-
-      // Soft delete the first entry
-      const deletedFirst: PitlaneCurrentRecord = {
-        ...firstEntry,
-        ...deleteSyncFields(firstEntry),
-      };
-      await db.put('pitlane_current', deletedFirst);
-
-      // Shift all positions up (decrease queue_position by 1)
-      for (let i = 1; i < currentQueue.length; i++) {
-        const entry = currentQueue[i];
-        const shifted: PitlaneCurrentRecord = {
-          ...entry,
-          queuePosition: entry.queuePosition - 1,
-          ...updateSyncFields(entry),
-        };
-        await db.put('pitlane_current', shifted);
-      }
-
-      // Add new kart at the last position
+    if (currentQueue.length === 0) {
+      // Line is empty, just add the kart at position 0
       const newEntry: PitlaneCurrentRecord = {
         pitlaneConfigId: configId,
         teamId,
         kartId,
         lineNumber,
-        queuePosition: queueSize - 1,
+        queuePosition: 0,
         enteredAt: timestamp,
         ...createSyncFields(),
       };
       await db.add('pitlane_current', newEntry);
-    } else {
-      // Queue is not full, find the first available position
-      const occupiedPositions = new Set(currentQueue.map((e) => e.queuePosition));
-      let newPosition = 0;
-      while (occupiedPositions.has(newPosition)) {
-        newPosition++;
-      }
-
-      // Add new kart at the available position
-      const newEntry: PitlaneCurrentRecord = {
-        pitlaneConfigId: configId,
-        teamId,
-        kartId,
-        lineNumber,
-        queuePosition: newPosition,
-        enteredAt: timestamp,
-        ...createSyncFields(),
-      };
-      await db.add('pitlane_current', newEntry);
+      return;
     }
+
+    // Line has at least one kart: swap head kart to arriving team, and enqueue arriving kart at end
+    const firstEntry = currentQueue[0];
+
+    // Create history entry for the kart that leaves the queue
+    const historyRecord: PitlaneHistoryRecord = {
+      pitlaneConfigId: firstEntry.pitlaneConfigId,
+      teamId: firstEntry.teamId,
+      kartId: firstEntry.kartId,
+      lineNumber: firstEntry.lineNumber,
+      queuePosition: firstEntry.queuePosition,
+      enteredAt: firstEntry.enteredAt,
+      exitedAt: timestamp,
+      ...createSyncFields(),
+    };
+    await db.add('pitlane_history', historyRecord);
+
+    // Assign the head kart to the arriving team
+    const headKart = await db.get('karts', firstEntry.kartId);
+    if (headKart && !headKart.isDeleted) {
+      const updatedHeadKart: KartRecord = {
+        ...headKart,
+        teamId,
+        ...updateSyncFields(headKart),
+      };
+      await db.put('karts', updatedHeadKart);
+    }
+
+    // Soft delete the head entry
+    const deletedFirst: PitlaneCurrentRecord = {
+      ...firstEntry,
+      ...deleteSyncFields(firstEntry),
+    };
+    await db.put('pitlane_current', deletedFirst);
+
+    // Shift all positions up (decrease queue_position by 1)
+    for (let i = 1; i < currentQueue.length; i++) {
+      const entry = currentQueue[i];
+      const shifted: PitlaneCurrentRecord = {
+        ...entry,
+        queuePosition: entry.queuePosition - 1,
+        ...updateSyncFields(entry),
+      };
+      await db.put('pitlane_current', shifted);
+    }
+
+    const newPosition = Math.min(queueSize - 1, Math.max(0, currentQueue.length - 1));
+
+    // Add arriving kart at the end
+    const newEntry: PitlaneCurrentRecord = {
+      pitlaneConfigId: configId,
+      teamId,
+      kartId,
+      lineNumber,
+      queuePosition: newPosition,
+      enteredAt: timestamp,
+      ...createSyncFields(),
+    };
+    await db.add('pitlane_current', newEntry);
+  }
+
+  async removeKartByKartId(kartId: number): Promise<void> {
+    const entry = await this.findEntryByKartId(kartId);
+    if (!entry) {
+      return;
+    }
+    await this.deleteById(entry.id!);
+  }
+
+  async replaceKartInEntry(entryId: number, newKartId: number): Promise<void> {
+    const db = await getDatabase();
+    const entry = await db.get('pitlane_current', entryId);
+    if (!entry || entry.isDeleted) {
+      throw new Error('Pitlane entry not found');
+    }
+
+    const timestamp = now();
+
+    // Create history for the exiting kart
+    const historyRecord: PitlaneHistoryRecord = {
+      pitlaneConfigId: entry.pitlaneConfigId,
+      teamId: entry.teamId,
+      kartId: entry.kartId,
+      lineNumber: entry.lineNumber,
+      queuePosition: entry.queuePosition,
+      enteredAt: entry.enteredAt,
+      exitedAt: timestamp,
+      ...createSyncFields(),
+    };
+    await db.add('pitlane_history', historyRecord);
+
+    // Ensure the replacement kart has no team assignment
+    const replacementKart = await db.get('karts', newKartId);
+    if (replacementKart && !replacementKart.isDeleted) {
+      const updatedReplacement: KartRecord = {
+        ...replacementKart,
+        teamId: null,
+        ...updateSyncFields(replacementKart),
+      };
+      await db.put('karts', updatedReplacement);
+    }
+
+    const updatedEntry: PitlaneCurrentRecord = {
+      ...entry,
+      kartId: newKartId,
+      enteredAt: timestamp,
+      ...updateSyncFields(entry),
+    };
+    await db.put('pitlane_current', updatedEntry);
   }
 
   /**

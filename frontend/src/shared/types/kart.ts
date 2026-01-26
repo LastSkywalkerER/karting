@@ -7,6 +7,7 @@ export interface Kart {
   raceId: number;
   status: number;
   teamId: number | null;
+  teamNumber?: string | null; // Team number from race_teams for this race
   race?: Race;
   team?: Team | null;
 }

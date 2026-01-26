@@ -1,4 +1,5 @@
 import { kartRepository } from '../db/KartRepository';
+import { pitlaneCurrentRepository } from '../../pitlane/db/PitlaneCurrentRepository';
 import type { Kart } from '@/shared/types/kart';
 
 export interface KartServiceResult<T> {
@@ -77,6 +78,7 @@ export class KartService {
     data: { status?: number; teamId?: number | null }
   ): Promise<KartServiceResult<Kart>> {
     try {
+      console.log('KartService.updateKart', { id, data });
       // Validate status if provided
       if (data.status !== undefined && (data.status < 1 || data.status > 5)) {
         return { success: false, error: 'Kart status must be between 1 and 5' };
@@ -98,12 +100,34 @@ export class KartService {
         if (existingTeamKart) {
           await kartRepository.assignTeam(existingTeamKart.id, null);
         }
+
+        // If the target kart is currently in pitlane, it must leave immediately
+        const targetEntry = await pitlaneCurrentRepository.findEntryByKartId(kart.id);
+        if (targetEntry) {
+          console.log('KartService.updateKart: target kart in pitlane, removing', {
+            kartId: kart.id,
+            entryId: targetEntry.id,
+            lineNumber: targetEntry.lineNumber,
+            queuePosition: targetEntry.queuePosition,
+          });
+
+          if (existingTeamKart) {
+            // Ensure old team kart is not in pitlane already
+            await pitlaneCurrentRepository.removeKartByKartId(existingTeamKart.id);
+            // Replace the target entry with the old team kart
+            await pitlaneCurrentRepository.replaceKartInEntry(targetEntry.id!, existingTeamKart.id);
+          } else {
+            // No previous kart for the team, just remove the entry
+            await pitlaneCurrentRepository.deleteById(targetEntry.id!);
+          }
+        }
       }
 
       const updated = await kartRepository.update(id, data);
       if (!updated) {
         return { success: false, error: 'Kart not found' };
       }
+      console.log('KartService.updateKart success', { updated });
       return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: String(error) };

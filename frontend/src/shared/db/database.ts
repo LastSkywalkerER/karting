@@ -202,8 +202,9 @@ export function createSyncFields(): SyncFields {
 // Helper to update sync fields
 export function updateSyncFields(existing: SyncFields): SyncFields {
   return {
-    ...existing,
     updatedAt: now(),
+    isDeleted: existing.isDeleted,
+    deletedAt: existing.deletedAt,
   };
 }
 

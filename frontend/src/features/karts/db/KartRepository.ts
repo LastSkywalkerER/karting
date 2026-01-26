@@ -33,15 +33,15 @@ export class KartRepository {
   async findByTeam(teamId: number): Promise<Kart[]> {
     const db = await getDatabase();
     const karts = await db.getAllFromIndex('karts', 'teamId', teamId);
-    return karts.filter((k) => !k.isDeleted).map((k) => this.toKart(k));
+    const activeKarts = karts.filter((k) => !k.isDeleted);
+    return Promise.all(activeKarts.map((k) => this.populateRelations(k)));
   }
 
   async findByTeamAndRace(teamId: number, raceId: number): Promise<Kart[]> {
     const db = await getDatabase();
     const karts = await db.getAllFromIndex('karts', 'raceId', raceId);
-    return karts
-      .filter((k) => !k.isDeleted && k.teamId === teamId)
-      .map((k) => this.toKart(k));
+    const activeKarts = karts.filter((k) => !k.isDeleted && k.teamId === teamId);
+    return Promise.all(activeKarts.map((k) => this.populateRelations(k)));
   }
 
   private toKart(record: KartRecord): Kart {
@@ -62,6 +62,17 @@ export class KartRepository {
       const team = await db.get('teams', record.teamId);
       if (team && !team.isDeleted) {
         kart.team = { id: team.id!, name: team.name };
+      }
+
+      // Get team number from race_teams for this race
+      try {
+        const raceTeam = await db.get('race_teams', [record.raceId, record.teamId]);
+        if (raceTeam && !raceTeam.isDeleted) {
+          kart.teamNumber = raceTeam.number;
+        }
+      } catch (error) {
+        // Race team might not exist, ignore
+        console.warn('Failed to get race team number:', error);
       }
     }
 

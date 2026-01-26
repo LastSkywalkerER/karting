@@ -121,6 +121,7 @@ export function KartsPage() {
     if (!selectedKart) return;
     
     try {
+      console.log('handleSaveKart', { kartId: selectedKart.id, payload: editFormData });
       await updateKart(selectedKart.id, editFormData);
       setEditDialogVisible(false);
       loadData();

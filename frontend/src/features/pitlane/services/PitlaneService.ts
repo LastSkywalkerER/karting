@@ -124,6 +124,7 @@ export class PitlaneService {
     lineNumber: number
   ): Promise<PitlaneServiceResult<void>> {
     try {
+      console.log('PitlaneService.addKartToPitlane', { configId, teamId, lineNumber });
       // Validate config exists
       const config = await pitlaneConfigRepository.findById(configId);
       if (!config) {

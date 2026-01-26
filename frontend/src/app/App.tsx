@@ -11,18 +11,18 @@ import { PitlanePage } from '@/pages/PitlanePage';
 function App() {
   return (
     <SyncProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/races" replace />} />
-            <Route path="races" element={<RacesPage />} />
-            <Route path="races/:id" element={<RaceDetailPage />} />
-            <Route path="teams" element={<TeamsPage />} />
-            <Route path="karts" element={<KartsPage />} />
-            <Route path="pitlane" element={<PitlanePage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/races" replace />} />
+          <Route path="races" element={<RacesPage />} />
+          <Route path="races/:id" element={<RaceDetailPage />} />
+          <Route path="teams" element={<TeamsPage />} />
+          <Route path="karts" element={<KartsPage />} />
+          <Route path="pitlane" element={<PitlanePage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
     </SyncProvider>
   );
 }

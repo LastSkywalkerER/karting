@@ -127,16 +127,7 @@ export class SyncService {
     }
 
     // Apply pitlane_current
-    for (const record of changes.pitlane_current) {
-      if (record.id) {
-        const existing = await this.pitlaneCurrentRepo.findOneBy({ id: record.id });
-        if (!existing || (record.updatedAt && record.updatedAt > existing.updatedAt)) {
-          await this.pitlaneCurrentRepo.save(record);
-        }
-      } else {
-        await this.pitlaneCurrentRepo.save(record);
-      }
-    }
+    await this.applyPitlaneCurrentChanges(changes.pitlane_current);
 
     // Apply pitlane_history
     for (const record of changes.pitlane_history) {
@@ -149,6 +140,43 @@ export class SyncService {
         await this.pitlaneHistoryRepo.save(record);
       }
     }
+  }
+
+  private async applyPitlaneCurrentChanges(records: Partial<PitlaneCurrent>[]): Promise<void> {
+    const sortedRecords = [...records].sort((a, b) => {
+      if (a.isDeleted === b.isDeleted) return 0;
+      return a.isDeleted ? -1 : 1;
+    });
+
+    for (const record of sortedRecords) {
+      if (record.isDeleted && record.id) {
+        await this.pitlaneCurrentRepo.delete({ id: record.id });
+        continue;
+      }
+
+      if (!record.pitlaneConfigId || record.lineNumber === undefined || record.queuePosition === undefined) {
+        continue;
+      }
+
+      try {
+        await this.pitlaneCurrentRepo.save(record);
+      } catch (error: any) {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+          await this.releasePitlaneSlot(record);
+          await this.pitlaneCurrentRepo.save(record);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private async releasePitlaneSlot(record: Partial<PitlaneCurrent>): Promise<void> {
+    await this.pitlaneCurrentRepo.delete({
+      pitlaneConfigId: record.pitlaneConfigId,
+      lineNumber: record.lineNumber,
+      queuePosition: record.queuePosition,
+    });
   }
 
   private async getServerChanges(since: number): Promise<SyncChanges> {
