@@ -14,6 +14,7 @@ import {
   PitlaneView,
   PitlaneEntryForm,
 } from '@/features/pitlane';
+import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Race } from '@/shared/types/race';
 import type { Kart } from '@/shared/types/kart';
 import { KART_STATUS_COLORS, KART_STATUS_LABELS } from '@/shared/types/kart';
@@ -27,9 +28,9 @@ const STATUS_OPTIONS = Object.entries(KART_STATUS_LABELS).map(([value, label]) =
 
 export function PitlanePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentRaceId, setCurrentRaceId, isLoading: isRaceLoading } = useCurrentRace();
   const [races, setRaces] = useState<Race[]>([]);
   const [karts, setKarts] = useState<Kart[]>([]);
-  const [selectedRaceId, setSelectedRaceId] = useState<number | null>(null);
   const [pitlaneConfig, setPitlaneConfig] = useState<PitlaneConfig | null>(null);
   const [currentState, setCurrentState] = useState<PitlaneCurrent[]>([]);
   const [history, setHistory] = useState<PitlaneHistory[]>([]);
@@ -50,22 +51,30 @@ export function PitlanePage() {
   const [removeTeamId, setRemoveTeamId] = useState<number | null>(null);
   const [removeKartStatus, setRemoveKartStatus] = useState<number>(1);
 
+  // Get selected race ID from context or URL params
+  const selectedRaceId = currentRaceId ?? (searchParams.get('raceId') ? parseInt(searchParams.get('raceId')!) : null);
+
   useEffect(() => {
     const loadRaces = async () => {
       const response = await fetchRaces();
       if (response.success && response.data) {
         setRaces(response.data);
         
-        const raceIdParam = searchParams.get('raceId');
-        if (raceIdParam) {
-          setSelectedRaceId(parseInt(raceIdParam));
-        } else if (response.data.length > 0) {
-          setSelectedRaceId(response.data[0].id);
+        // If no current race in context, try URL params, then first race
+        if (!isRaceLoading && !currentRaceId) {
+          const raceIdParam = searchParams.get('raceId');
+          if (raceIdParam) {
+            const raceId = parseInt(raceIdParam);
+            await setCurrentRaceId(raceId);
+          } else if (response.data.length > 0) {
+            await setCurrentRaceId(response.data[0].id);
+          }
         }
       }
     };
     loadRaces();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRaceLoading]);
 
   useEffect(() => {
     if (selectedRaceId) {
@@ -73,6 +82,11 @@ export function PitlanePage() {
       setSearchParams({ raceId: selectedRaceId.toString() });
     }
   }, [selectedRaceId]);
+
+  const handleRaceChange = async (raceId: number | null) => {
+    await setCurrentRaceId(raceId);
+    setSearchParams(raceId ? { raceId: raceId.toString() } : {});
+  };
 
   const loadData = async () => {
     if (!selectedRaceId) return;
@@ -212,7 +226,7 @@ export function PitlanePage() {
         <div className="flex items-center gap-3">
           <Select
             value={selectedRaceId}
-            onChange={(e) => setSelectedRaceId(e.value)}
+            onChange={(e) => handleRaceChange(e.value)}
             options={races}
             optionLabel="name"
             optionValue="id"

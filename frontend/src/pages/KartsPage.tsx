@@ -10,6 +10,7 @@ import {
   removeKartFromPitlane,
 } from '@/features/pitlane';
 import { fetchRaces } from '@/features/races';
+import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Kart } from '@/shared/types/kart';
 import { KART_STATUS_COLORS } from '@/shared/types/kart';
 import type { Race } from '@/shared/types/race';
@@ -25,10 +26,10 @@ const STATUS_OPTIONS = [
 
 export function KartsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentRaceId, setCurrentRaceId, isLoading: isRaceLoading } = useCurrentRace();
   const [races, setRaces] = useState<Race[]>([]);
   const [karts, setKarts] = useState<Kart[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRaceId, setSelectedRaceId] = useState<number | null>(null);
   const [pitlaneConfig, setPitlaneConfig] = useState<PitlaneConfig | null>(null);
   const [pitlaneCurrent, setPitlaneCurrent] = useState<PitlaneCurrent[]>([]);
   
@@ -50,6 +51,9 @@ export function KartsPage() {
   const [removeTeamId, setRemoveTeamId] = useState<number | null>(null);
   const [removeKartStatus, setRemoveKartStatus] = useState<number>(1);
 
+  // Get selected race ID from context or URL params
+  const selectedRaceId = currentRaceId ?? (searchParams.get('raceId') ? parseInt(searchParams.get('raceId')!) : null);
+
   useEffect(() => {
     const loadInitialData = async () => {
       const racesRes = await fetchRaces();
@@ -57,18 +61,22 @@ export function KartsPage() {
       if (racesRes.success && racesRes.data) {
         setRaces(racesRes.data);
         
-        // Check for raceId in URL params
-        const raceIdParam = searchParams.get('raceId');
-        if (raceIdParam) {
-          setSelectedRaceId(parseInt(raceIdParam));
-        } else if (racesRes.data.length > 0) {
-          setSelectedRaceId(racesRes.data[0].id);
+        // If no current race in context, try URL params, then first race
+        if (!isRaceLoading && !currentRaceId) {
+          const raceIdParam = searchParams.get('raceId');
+          if (raceIdParam) {
+            const raceId = parseInt(raceIdParam);
+            await setCurrentRaceId(raceId);
+          } else if (racesRes.data.length > 0) {
+            await setCurrentRaceId(racesRes.data[0].id);
+          }
         }
       }
     };
 
     loadInitialData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRaceLoading]);
 
   useEffect(() => {
     if (selectedRaceId) {
@@ -76,6 +84,11 @@ export function KartsPage() {
       setSearchParams({ raceId: selectedRaceId.toString() });
     }
   }, [selectedRaceId]);
+
+  const handleRaceChange = async (raceId: number | null) => {
+    await setCurrentRaceId(raceId);
+    setSearchParams(raceId ? { raceId: raceId.toString() } : {});
+  };
 
   const loadData = async () => {
     if (!selectedRaceId) return;
@@ -234,7 +247,7 @@ export function KartsPage() {
         <div className="flex items-center gap-3">
           <Select
             value={selectedRaceId}
-            onChange={(e) => setSelectedRaceId(e.value)}
+            onChange={(e) => handleRaceChange(e.value)}
             options={races}
             optionLabel="name"
             optionValue="id"

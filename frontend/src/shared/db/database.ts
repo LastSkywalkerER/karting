@@ -106,10 +106,14 @@ export interface RaceStatsDB extends DBSchema {
     key: string;
     value: SyncMetaRecord;
   };
+  current_app_state: {
+    key: string;
+    value: { key: string; value: string | number | null };
+  };
 }
 
 const DB_NAME = 'race-stats';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase<RaceStatsDB> | null = null;
 
@@ -178,6 +182,16 @@ export async function getDatabase(): Promise<IDBPDatabase<RaceStatsDB>> {
 
         // Sync meta store
         db.createObjectStore('sync_meta', { keyPath: 'key' });
+
+        // Current app state store (not synced)
+        db.createObjectStore('current_app_state', { keyPath: 'key' });
+      }
+      
+      // Version 3: Add current_app_state if upgrading from version 2
+      if (oldVersion < 3 && oldVersion >= 2) {
+        if (!db.objectStoreNames.contains('current_app_state')) {
+          db.createObjectStore('current_app_state', { keyPath: 'key' });
+        }
       }
     },
   });

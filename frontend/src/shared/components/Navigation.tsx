@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { SyncStatusIndicator } from '@/features/sync';
 
 export function Navigation() {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -9,7 +10,7 @@ export function Navigation() {
     }`;
 
   return (
-    <nav className="w-64 min-h-screen bg-slate-900 border-r border-slate-800 p-4 flex flex-col">
+    <nav className="w-64 h-screen sticky top-0 bg-slate-900 border-r border-slate-800 p-4 flex flex-col overflow-y-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
           Race Stats
@@ -39,7 +40,8 @@ export function Navigation() {
         </NavLink>
       </div>
 
-      <div className="mt-auto pt-4 border-t border-slate-800">
+      <div className="mt-auto pt-4 border-t border-slate-800 space-y-3">
+        <SyncStatusIndicator />
         <div className="text-slate-500 text-xs">
           Race Management v1.0
         </div>

@@ -5,6 +5,7 @@ import { fetchRaceById, addTeamToRace, removeTeamFromRace, RaceDetail } from '@/
 import { fetchTeams } from '@/features/teams';
 import { fetchKartsByRace, createKartsBulk } from '@/features/karts';
 import { fetchPitlaneConfig, createPitlaneConfig, PitlaneConfigForm } from '@/features/pitlane';
+import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Race } from '@/shared/types/race';
 import type { Team } from '@/shared/types/team';
 import type { Kart } from '@/shared/types/kart';
@@ -13,6 +14,7 @@ import type { PitlaneConfig } from '@/shared/types/pitlane';
 export function RaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { setCurrentRaceId } = useCurrentRace();
   const [race, setRace] = useState<Race | null>(null);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [karts, setKarts] = useState<Kart[]>([]);
@@ -33,13 +35,18 @@ export function RaceDetailPage() {
   const loadData = async () => {
     if (!id) return;
     
+    const raceId = parseInt(id);
+    
+    // Update current race in context
+    await setCurrentRaceId(raceId);
+    
     setLoading(true);
     try {
       const [raceRes, teamsRes, kartsRes, pitlaneRes] = await Promise.all([
-        fetchRaceById(parseInt(id)),
+        fetchRaceById(raceId),
         fetchTeams(),
-        fetchKartsByRace(parseInt(id)),
-        fetchPitlaneConfig(parseInt(id)),
+        fetchKartsByRace(raceId),
+        fetchPitlaneConfig(raceId),
       ]);
 
       if (raceRes.success && raceRes.data) {
@@ -63,6 +70,7 @@ export function RaceDetailPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const availableTeams = allTeams.filter(

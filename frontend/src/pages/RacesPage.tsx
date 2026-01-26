@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui';
 import { fetchRaces, createRace, deleteRace, RaceList, RaceForm } from '@/features/races';
+import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Race } from '@/shared/types/race';
 
 export function RacesPage() {
   const navigate = useNavigate();
+  const { setCurrentRaceId } = useCurrentRace();
   const [races, setRaces] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -59,7 +61,8 @@ export function RacesPage() {
     }
   };
 
-  const handleRaceClick = (race: Race) => {
+  const handleRaceClick = async (race: Race) => {
+    await setCurrentRaceId(race.id);
     navigate(`/races/${race.id}`);
   };
 

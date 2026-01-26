@@ -39,7 +39,7 @@ export interface SyncResponse {
 
 type StatusChangeCallback = (status: SyncStatus) => void;
 
-const SYNC_INTERVAL = 30000; // 30 seconds retry interval when offline
+const SYNC_INTERVAL = 5000; // 5 seconds periodic sync interval
 const API_BASE = '/api/sync';
 
 export class SyncManager {
@@ -65,16 +65,19 @@ export class SyncManager {
   }
 
   /**
-   * Start the sync manager - performs initial sync and sets up retry interval
+   * Start the sync manager - performs initial sync and sets up periodic sync interval
    */
   async start(): Promise<void> {
     // Perform initial sync
     await this.sync();
 
-    // Set up retry interval for when offline
+    // Set up periodic sync interval (every 5 seconds) to pull latest data and check connection
     this.syncIntervalId = setInterval(() => {
-      if (this.status === 'offline' && !this.isSyncing) {
+      if (!this.isSyncing) {
+        console.log('[SyncManager] Periodic sync triggered');
         this.sync();
+      } else {
+        console.log('[SyncManager] Sync already in progress, skipping periodic sync');
       }
     }, SYNC_INTERVAL);
   }
@@ -104,6 +107,7 @@ export class SyncManager {
    */
   private async sync(): Promise<boolean> {
     if (this.isSyncing) {
+      console.log('[SyncManager] Sync already in progress, skipping');
       return false;
     }
 
@@ -112,9 +116,12 @@ export class SyncManager {
 
     try {
       const lastSync = await syncMetaRepository.getLastSyncTimestamp();
+      console.log('[SyncManager] Starting sync, lastSyncTimestamp:', lastSync);
 
       // Gather local changes since last sync
       const localChanges = await this.getLocalChanges(lastSync);
+      const localChangesCount = Object.values(localChanges).reduce((sum, arr) => sum + arr.length, 0);
+      console.log('[SyncManager] Local changes to sync:', localChangesCount);
 
       // Send to server
       const response = await fetch(API_BASE, {
@@ -131,6 +138,8 @@ export class SyncManager {
       }
 
       const data: SyncResponse = await response.json();
+      const serverChangesCount = Object.values(data.changes).reduce((sum, arr) => sum + arr.length, 0);
+      console.log('[SyncManager] Server changes received:', serverChangesCount);
 
       // Apply server changes locally
       await this.applyServerChanges(data.changes);
@@ -140,9 +149,10 @@ export class SyncManager {
 
       this.setStatus('online');
       this.isSyncing = false;
+      console.log('[SyncManager] Sync completed successfully, new timestamp:', data.serverTimestamp);
       return true;
     } catch (error) {
-      console.error('Sync error:', error);
+      console.error('[SyncManager] Sync error:', error);
       this.setStatus('offline');
       this.isSyncing = false;
       return false;
