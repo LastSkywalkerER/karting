@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KART_STATUS_COLORS, KART_STATUS_LABELS } from '@/shared/types/kart';
 
 interface StatusPickerProps {
@@ -9,8 +9,66 @@ interface StatusPickerProps {
   onClose: () => void;
 }
 
+const PICKER_WIDTH = 48; // 40px button + 8px padding
+const PICKER_HEIGHT = 240; // 5 buttons * 40px + 4 gaps * 8px + 16px padding
+const OFFSET = 10; // Offset from cursor
+
 export function StatusPicker({ visible, position, currentStatus, onSelect, onClose }: StatusPickerProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [calculatedPosition, setCalculatedPosition] = useState({ x: 0, y: 0, transform: '' });
+
+  useEffect(() => {
+    if (!visible || !ref.current) return;
+
+    // Calculate smart positioning
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let transformX = `${OFFSET}px`; // Default: right of cursor
+    let transformY = `-50%`; // Default: vertically centered
+
+    // Check horizontal positioning
+    const spaceRight = viewportWidth - position.x;
+    const spaceLeft = position.x;
+    const minSpaceNeeded = PICKER_WIDTH + OFFSET;
+    
+    if (spaceRight < minSpaceNeeded && spaceLeft >= minSpaceNeeded) {
+      // Not enough space on right, show on left
+      transformX = `calc(-100% - ${OFFSET}px)`;
+    } else if (spaceRight >= minSpaceNeeded) {
+      // Enough space on right, show on right (default)
+      transformX = `${OFFSET}px`;
+    } else {
+      // Not enough space on either side, center horizontally
+      transformX = '-50%';
+    }
+
+    // Check vertical positioning
+    const spaceBelow = viewportHeight - position.y;
+    const spaceAbove = position.y;
+    const minVerticalSpace = PICKER_HEIGHT / 2 + OFFSET;
+    
+    if (spaceBelow < minVerticalSpace && spaceAbove >= minVerticalSpace) {
+      // Not enough space below, show above
+      transformY = `calc(-100% - ${OFFSET}px)`;
+    } else if (spaceBelow >= minVerticalSpace) {
+      // Enough space below, center vertically (default)
+      transformY = '-50%';
+    } else {
+      // Not enough space on either side, align to available space
+      if (spaceBelow > spaceAbove) {
+        transformY = `${OFFSET}px`;
+      } else {
+        transformY = `calc(-100% - ${OFFSET}px)`;
+      }
+    }
+
+    setCalculatedPosition({
+      x: position.x,
+      y: position.y,
+      transform: `translate(${transformX}, ${transformY})`,
+    });
+  }, [visible, position]);
 
   useEffect(() => {
     if (!visible) return;
@@ -45,12 +103,12 @@ export function StatusPicker({ visible, position, currentStatus, onSelect, onClo
       ref={ref}
       className="fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2"
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        transform: 'translate(-50%, 10px)',
+        left: `${calculatedPosition.x}px`,
+        top: `${calculatedPosition.y}px`,
+        transform: calculatedPosition.transform,
       }}
     >
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2">
         {statuses.map((status) => {
           const color = KART_STATUS_COLORS[status];
           const isSelected = status === currentStatus;
