@@ -54,6 +54,12 @@ services:
         condition: service_healthy
     networks:
       - race-stats-network
+    labels:
+      # Traefik: route karting.sky-apps.uk:80 to frontend:80
+      - "traefik.enable=true"
+      - "traefik.http.routers.race-stats-frontend.rule=Host(`karting.sky-apps.uk`)"
+      - "traefik.http.routers.race-stats-frontend.entrypoints=web"
+      - "traefik.http.services.race-stats-frontend.loadbalancer.server.port=80"
 
 volumes:
   backend_data:
