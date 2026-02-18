@@ -31,17 +31,18 @@ export function RaceDetail({
   const raceTeams = race.raceTeams ?? [];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Teams Section */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Teams</h2>
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Teams</h2>
           <Button
             label="Add Team"
             icon="pi pi-plus"
             size="small"
             onClick={onAddTeam}
             disabled={availableTeamsCount === 0}
+            className="w-full sm:w-auto min-h-[44px]"
           />
         </div>
         
@@ -75,14 +76,15 @@ export function RaceDetail({
       </div>
 
       {/* Karts Section */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Karts</h2>
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Karts</h2>
           <Button
             label="Add Karts"
             icon="pi pi-plus"
             size="small"
             onClick={onAddKarts}
+            className="w-full sm:w-auto min-h-[44px]"
           />
         </div>
         
@@ -100,21 +102,22 @@ export function RaceDetail({
       </div>
 
       {/* Pitlane Config Section */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 lg:col-span-2">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Pitlane Configuration</h2>
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 lg:col-span-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Pitlane Configuration</h2>
           {!pitlaneConfig && (
             <Button
               label="Configure Pitlane"
               icon="pi pi-cog"
               size="small"
               onClick={onConfigurePitlane}
+              className="w-full sm:w-auto min-h-[44px]"
             />
           )}
         </div>
         
         {pitlaneConfig ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-slate-800/50 p-4 rounded-lg">
               <p className="text-slate-400 text-sm mb-1">Lines</p>
               <p className="text-2xl font-bold text-white">{pitlaneConfig.linesCount}</p>

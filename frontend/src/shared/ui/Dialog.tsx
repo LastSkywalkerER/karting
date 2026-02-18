@@ -28,7 +28,7 @@ export function Dialog({ visible, onHide, header, style, className = '', childre
   if (!visible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/60"
         onClick={onHide}
@@ -36,7 +36,7 @@ export function Dialog({ visible, onHide, header, style, className = '', childre
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900 shadow-xl ${className}`}
+        className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-auto rounded-xl border border-slate-800 bg-slate-900 shadow-xl mx-2 sm:mx-0 ${className}`}
         style={style}
       >
         <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">

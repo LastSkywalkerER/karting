@@ -45,33 +45,33 @@ export function KartCard({ kart, onClick, onStatusChange }: KartCardProps) {
     <>
       <div
         onClick={() => onClick(kart)}
-        className="relative bg-slate-900 rounded-xl border border-slate-800 p-5 cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
+        className="relative bg-slate-900 rounded-lg border border-slate-800 p-2.5 sm:p-3 cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
         style={{
           borderColor: statusColor + '40',
-          boxShadow: `0 0 20px ${statusColor}15`,
+          boxShadow: `0 0 12px ${statusColor}15`,
         }}
       >
         <div
           ref={badgeRef}
           onClick={handleBadgeClick}
-          className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform duration-200 z-10"
+          className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold cursor-pointer hover:scale-110 active:scale-105 transition-transform duration-200 z-10 touch-manipulation"
           style={{
             backgroundColor: statusColor,
-            boxShadow: `0 0 16px ${statusColor}cc`,
+            boxShadow: `0 0 10px ${statusColor}cc`,
           }}
         >
           {kart.teamNumber ?? (kart.team?.id ? kart.team.id : '?')}
         </div>
-        <div className="space-y-3">
-          <div className="text-sm font-semibold text-slate-300">#{kart.id}</div>
+        <div className="space-y-0.5 sm:space-y-1 pr-7 sm:pr-8">
+          <div className="text-xs sm:text-sm font-semibold text-slate-300">#{kart.id}</div>
           {kart.team ? (
             <div className="flex items-center min-w-0">
-              <span className="text-slate-200 text-sm font-medium truncate min-w-0">
+              <span className="text-slate-200 text-xs sm:text-sm font-medium truncate min-w-0">
                 {kart.team.name}
               </span>
             </div>
           ) : (
-            <span className="text-slate-500 text-sm">Unassigned</span>
+            <span className="text-slate-500 text-xs sm:text-sm">Unassigned</span>
           )}
         </div>
       </div>

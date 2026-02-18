@@ -248,12 +248,12 @@ export function KartsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Karts</h1>
-          <p className="text-slate-400">Manage kart statuses and team assignments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Karts</h1>
+          <p className="text-slate-400 text-sm sm:text-base">Manage kart statuses and team assignments</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Select
             value={selectedRaceId}
             onChange={(e) => handleRaceChange(e.value)}
@@ -261,20 +261,21 @@ export function KartsPage() {
             optionLabel="name"
             optionValue="id"
             placeholder="Select Race"
-            className="w-64"
+            className="w-full sm:w-64"
           />
           {selectedRaceId && (
             <Button
               label="Add Karts"
               icon="pi pi-plus"
               onClick={() => setAddKartsDialogVisible(true)}
+              className="w-full sm:w-auto min-h-[44px]"
             />
           )}
         </div>
       </div>
 
       {/* Status Legend */}
-      <div className="flex flex-wrap items-center gap-8 p-5 bg-slate-900 rounded-lg border border-slate-800">
+      <div className="flex flex-wrap items-center gap-4 sm:gap-8 p-4 sm:p-5 bg-slate-900 rounded-lg border border-slate-800">
         <span className="text-slate-400 text-sm">Status:</span>
         {STATUS_OPTIONS.map((status) => (
           <div key={status.value} className="flex items-center gap-2">
@@ -288,11 +289,11 @@ export function KartsPage() {
       </div>
 
       {selectedRaceId && pitlaneConfig ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-white">Pitlane</h2>
-              <p className="text-slate-400 text-sm">Current state</p>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Pitlane</h2>
+              <p className="text-slate-400 text-xs">Current state</p>
             </div>
             <Button
               label="Add Kart to Pitlane"
@@ -302,14 +303,15 @@ export function KartsPage() {
                 setAddKartDialogVisible(true);
               }}
               disabled={availableTeamsCount === 0 || raceTeams.length === 0}
+              className="w-full sm:w-auto min-h-[40px]"
             />
           </div>
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-900 rounded-lg border border-slate-800 p-2 sm:p-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-2">
               {Object.entries(lineData).map(([lineNumber, entries]) => (
                 <div
                   key={lineNumber}
-                  className="bg-slate-900/50 rounded-lg border border-slate-800 p-3 cursor-pointer"
+                  className="bg-slate-900/50 rounded-md border border-slate-800 p-2 cursor-pointer min-h-0"
                   onClick={() => {
                     setAddFormData({ teamId: null, lineNumber: Number(lineNumber) });
                     setAddKartDialogVisible(true);
@@ -324,19 +326,24 @@ export function KartsPage() {
                     }
                   }}
                 >
-                  <div className="text-sm text-slate-400 mb-3">Line {lineNumber}</div>
+                  <div className="text-xs text-slate-400 mb-1.5 flex items-center gap-1">
+                    <span className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                      {lineNumber}
+                    </span>
+                    Line
+                  </div>
                   {entries.length === 0 ? (
-                    <div className="text-slate-600 text-sm">Empty</div>
+                    <div className="text-slate-600 text-xs">Empty</div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1">
                       {entries.map((entry) => (
                         <button
                           key={entry.id}
                           type="button"
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold transition-transform hover:scale-105 cursor-pointer"
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold transition-transform hover:scale-105 cursor-pointer shrink-0"
                           style={{
                             backgroundColor: getStatusColor(entry.kart?.status),
-                            boxShadow: `0 0 12px ${getStatusColor(entry.kart?.status)}cc`,
+                            boxShadow: `0 0 8px ${getStatusColor(entry.kart?.status)}cc`,
                           }}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -479,7 +486,7 @@ export function KartsPage() {
               className="w-full"
             />
             <p className="text-sm text-slate-500 mt-1">
-              All karts will be created with status 1 (green) and unassigned
+              All karts will be created with status 5 (black) and unassigned
             </p>
           </div>
           <div className="flex justify-end gap-2 mt-4">

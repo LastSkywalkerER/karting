@@ -87,7 +87,7 @@ export class KartRepository {
     const db = await getDatabase();
     const record: KartRecord = {
       raceId: data.raceId,
-      status: data.status ?? 1,
+      status: data.status ?? 5,
       teamId: data.teamId ?? null,
       ...createSyncFields(),
     };
@@ -102,7 +102,7 @@ export class KartRepository {
     for (let i = 0; i < count; i++) {
       const record: KartRecord = {
         raceId,
-        status: 1,
+        status: 5,
         teamId: null,
         ...createSyncFields(),
       };

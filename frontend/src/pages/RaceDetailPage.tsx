@@ -154,17 +154,18 @@ export function RaceDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <Button
           icon="pi pi-arrow-left"
           rounded
           text
           severity="secondary"
           onClick={() => navigate('/races')}
+          className="shrink-0 min-h-[44px] min-w-[44px]"
         />
-        <div>
-          <h1 className="text-3xl font-bold text-white">{race.name}</h1>
-          <p className="text-slate-400">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl font-bold text-white break-words">{race.name}</h1>
+          <p className="text-slate-400 text-sm sm:text-base mt-1">
             {new Date(race.date).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
@@ -259,7 +260,7 @@ export function RaceDetailPage() {
               className="w-full"
             />
             <p className="text-sm text-slate-500 mt-1">
-              All karts will be created with status 1 (green) and unassigned
+              All karts will be created with status 5 (black) and unassigned
             </p>
           </div>
           <div className="flex justify-end gap-2 mt-4">

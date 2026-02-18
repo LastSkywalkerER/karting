@@ -32,44 +32,77 @@ export function TeamList({ teams, loading, onEdit, onDelete }: TeamListProps) {
   }
 
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-slate-800/50">
-          <tr>
-            <th className="text-left px-6 py-4 text-slate-400 font-medium">
-              Name
-            </th>
-            <th className="px-6 py-4" />
-          </tr>
-        </thead>
-        <tbody>
-          {sortedTeams.map((team) => (
-            <tr key={team.id} className="border-t border-slate-800">
-              <td className="px-7 py-5 text-slate-200">
-                <div className="pr-1">{team.name}</div>
-              </td>
-              <td className="px-7 py-5">
-                <div className="flex gap-2 justify-end">
-      <Button
-        icon="pi pi-pencil"
-        rounded
-        text
-        severity="secondary"
-        onClick={() => onEdit(team)}
-      />
-      <Button
-        icon="pi pi-trash"
-        rounded
-        text
-        severity="danger"
-        onClick={() => onDelete(team)}
-      />
-    </div>
-              </td>
+    <>
+      {/* Mobile: card list */}
+      <div className="md:hidden flex flex-col gap-2">
+        {sortedTeams.map((team) => (
+          <div
+            key={team.id}
+            className="flex items-center justify-between gap-3 p-4 bg-slate-900 rounded-xl border border-slate-800"
+          >
+            <span className="text-slate-200 font-medium truncate min-w-0">{team.name}</span>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                icon="pi pi-pencil"
+                rounded
+                text
+                severity="secondary"
+                onClick={() => onEdit(team)}
+                className="min-h-[44px] min-w-[44px]"
+              />
+              <Button
+                icon="pi pi-trash"
+                rounded
+                text
+                severity="danger"
+                onClick={() => onDelete(team)}
+                className="min-h-[44px] min-w-[44px]"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-800/50">
+            <tr>
+              <th className="text-left px-6 py-4 text-slate-400 font-medium">
+                Name
+              </th>
+              <th className="px-6 py-4" />
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {sortedTeams.map((team) => (
+              <tr key={team.id} className="border-t border-slate-800">
+                <td className="px-7 py-5 text-slate-200">
+                  <div className="pr-1">{team.name}</div>
+                </td>
+                <td className="px-7 py-5">
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      icon="pi pi-pencil"
+                      rounded
+                      text
+                      severity="secondary"
+                      onClick={() => onEdit(team)}
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      rounded
+                      text
+                      severity="danger"
+                      onClick={() => onDelete(team)}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

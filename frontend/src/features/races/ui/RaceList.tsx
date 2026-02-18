@@ -40,11 +40,11 @@ export function RaceList({ races, loading, onRaceClick, onDelete }: RaceListProp
         <div
           key={race.id}
           onClick={() => onRaceClick(race)}
-          className="bg-slate-900 rounded-xl border border-slate-800 p-7 cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group space-y-5"
+          className="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-7 cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group space-y-5"
         >
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-lg bg-linear-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
-              <i className="pi pi-flag text-xl text-emerald-400" />
+          <div className="flex items-start justify-between gap-2">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-linear-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center shrink-0">
+              <i className="pi pi-flag text-lg sm:text-xl text-emerald-400" />
             </div>
             <Button
               icon="pi pi-trash"
@@ -52,11 +52,11 @@ export function RaceList({ races, loading, onRaceClick, onDelete }: RaceListProp
               text
               severity="danger"
               onClick={(e) => onDelete(race, e)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-h-[44px] min-w-[44px] shrink-0"
             />
           </div>
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-white">{race.name}</h3>
+          <div className="space-y-3 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{race.name}</h3>
             <p className="text-slate-400 text-sm">{formatDate(race.date)}</p>
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <i className="pi pi-users" />

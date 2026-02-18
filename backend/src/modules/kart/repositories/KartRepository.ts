@@ -12,7 +12,7 @@ export class KartRepository {
   async create(data: { raceId: number; status?: number; teamId?: number | null }): Promise<Kart> {
     const kart = this.repository.create({
       raceId: data.raceId,
-      status: data.status ?? 1,
+      status: data.status ?? 5,
       teamId: data.teamId ?? null
     });
     return await this.repository.save(kart);
@@ -23,7 +23,7 @@ export class KartRepository {
     for (let i = 0; i < count; i++) {
       const kart = this.repository.create({
         raceId,
-        status: 1,
+        status: 5,
         teamId: null
       });
       karts.push(kart);

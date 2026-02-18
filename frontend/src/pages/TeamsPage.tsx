@@ -67,15 +67,16 @@ export function TeamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Teams</h1>
-          <p className="text-slate-400">Manage race teams</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Teams</h1>
+          <p className="text-slate-400 text-sm sm:text-base">Manage race teams</p>
         </div>
         <Button
           label="Create Team"
           icon="pi pi-plus"
           onClick={openCreateDialog}
+          className="w-full sm:w-auto min-h-[44px]"
         />
       </div>
 

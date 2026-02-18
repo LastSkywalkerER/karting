@@ -218,22 +218,20 @@ export function PitlanePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Pitlane</h1>
-          <p className="text-slate-400">Manage pitlane entries</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Pitlane</h1>
+          <p className="text-slate-400 text-sm sm:text-base">Manage pitlane entries</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select
-            value={selectedRaceId}
-            onChange={(e) => handleRaceChange(e.value)}
-            options={races}
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Select Race"
-            className="w-64"
-          />
-        </div>
+        <Select
+          value={selectedRaceId}
+          onChange={(e) => handleRaceChange(e.value)}
+          options={races}
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select Race"
+          className="w-full sm:w-64"
+        />
       </div>
 
       {!selectedRaceId ? (
@@ -281,34 +279,34 @@ export function PitlanePage() {
                 <p className="text-slate-500">No history yet</p>
               </div>
             ) : (
-              <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <table className="w-full">
+              <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
+                <table className="w-full min-w-[400px]">
                   <thead className="bg-slate-800/50">
                     <tr>
-                      <th className="text-left px-6 py-4 text-slate-400 font-medium">Team</th>
-                      <th className="text-left px-6 py-4 text-slate-400 font-medium">Kart</th>
-                      <th className="text-left px-6 py-4 text-slate-400 font-medium">Line</th>
-                      <th className="text-left px-6 py-4 text-slate-400 font-medium">Entered</th>
-                      <th className="text-left px-6 py-4 text-slate-400 font-medium">Exited</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-slate-400 font-medium text-sm sm:text-base">Team</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-slate-400 font-medium text-sm sm:text-base">Kart</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-slate-400 font-medium text-sm sm:text-base">Line</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-slate-400 font-medium text-sm sm:text-base">Entered</th>
+                      <th className="text-left px-4 sm:px-6 py-3 sm:py-4 text-slate-400 font-medium text-sm sm:text-base">Exited</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.slice(0, 50).map((entry) => (
                       <tr key={entry.id} className="border-t border-slate-800">
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">
                               {teamNumberById.get(entry.teamId) || '?'}
                             </div>
-                            <span className="text-white">{entry.team?.name || 'Unknown'}</span>
+                            <span className="text-white text-sm sm:text-base">{entry.team?.name || 'Unknown'}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-300">#{entry.kartId}</td>
-                        <td className="px-6 py-4 text-slate-300">{entry.lineNumber}</td>
-                        <td className="px-6 py-4 text-slate-400">
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-300 text-sm sm:text-base">#{entry.kartId}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-300 text-sm sm:text-base">{entry.lineNumber}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-400 text-sm sm:text-base">
                           {new Date(entry.enteredAt).toLocaleTimeString()}
                         </td>
-                        <td className="px-6 py-4 text-slate-400">
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-400 text-sm sm:text-base">
                           {new Date(entry.exitedAt).toLocaleTimeString()}
                         </td>
                       </tr>
