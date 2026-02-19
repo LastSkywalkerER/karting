@@ -5,6 +5,10 @@ services:
       dockerfile: Dockerfile.scrapper
     platform: linux/amd64
     container_name: race-stats-scrapper
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
     environment:
       - PORT=3001
       - DB_PATH=/app/data/race_data.db

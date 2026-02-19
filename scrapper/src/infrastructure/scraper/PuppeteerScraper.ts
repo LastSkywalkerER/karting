@@ -40,9 +40,11 @@ export class PuppeteerScraper implements IScraperService {
         // Same session already being scraped - skip, avoid redundant restart
         return;
       }
-      // Different session - switch to new URL
+      // Different session - switch to new URL and re-setup observer for new page
       console.log(`Switching to ${url}`);
       await this.navigateToUrl(url, sessionId);
+      await this.setupMutationObserver(sessionId);
+      console.log('Scraper switched to new session. Monitoring for changes...');
       return;
     }
 
@@ -63,11 +65,13 @@ export class PuppeteerScraper implements IScraperService {
         launchOptions.executablePath = chromePath;
       } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        // Required for Chrome in Docker: sandbox requires namespaces which fail with "Operation not permitted"
+        // Required for Chrome in Docker: sandbox/zygote require namespaces which fail with "Operation not permitted"
         launchOptions.args = [
           '--no-sandbox',
+          '--no-zygote',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--disable-gpu',
         ];
       }
 
@@ -121,15 +125,20 @@ export class PuppeteerScraper implements IScraperService {
     console.log('Waiting for WebSocket data to load...');
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    await this.page.waitForFunction(
-      () => {
-        const rows = (document as unknown as Document).querySelectorAll(
-          '[class*="datatable-row"]:not(.datatable-header-row)'
-        );
-        return rows && rows.length > 0;
-      },
-      { timeout: 30000 }
-    );
+    try {
+      await this.page.waitForFunction(
+        () => {
+          const rows = (document as unknown as Document).querySelectorAll(
+            '[class*="datatable-row"]:not(.datatable-header-row)'
+          );
+          return rows && rows.length > 0;
+        },
+        { timeout: 15000 }
+      );
+    } catch {
+      // Session may have no data yet (race not started) - proceed anyway; MutationObserver will fire when data arrives
+      console.log('No data rows yet, continuing - will monitor for updates');
+    }
   }
 
   async stop(): Promise<void> {
