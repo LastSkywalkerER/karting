@@ -189,9 +189,25 @@ export class PuppeteerScraper implements IScraperService {
       if (!this.lastDataChangeTime) return;
       if (Date.now() - this.lastDataChangeTime >= IDLE_STOP_MS) {
         console.log('[PuppeteerScraper] No data changes for 1 minute, auto-stopping');
+        this.notifyBackendSessionCompleted();
         this.stop();
       }
     }, IDLE_CHECK_INTERVAL_MS);
+  }
+
+  private notifyBackendSessionCompleted(): void {
+    const sessionId = this.currentSessionId;
+    const backendUrl = process.env.BACKEND_URL;
+    if (!sessionId || !backendUrl) return;
+
+    const url = `${backendUrl.replace(/\/$/, '')}/api/scraper/session-completed`;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    }).catch((err) => {
+      console.warn('[PuppeteerScraper] Failed to notify backend session completed:', err.message);
+    });
   }
 
   private stopIdleCheck(): void {

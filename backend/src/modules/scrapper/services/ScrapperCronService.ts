@@ -28,6 +28,7 @@ export class ScrapperCronService {
         where: {
           isDeleted: false,
           speedhiveUrl: Not(IsNull()),
+          scrapeCompletedAt: IsNull(),
         },
         select: ['id', 'speedhiveUrl', 'date'],
       });
@@ -37,20 +38,18 @@ export class ScrapperCronService {
       );
       if (withUrl.length === 0) return;
 
+      const status = await scrapperProxyService.getScrapeStatus();
+      if (status?.isRunning) {
+        return;
+      }
+
       const idx = this.roundRobinIndex % withUrl.length;
       this.roundRobinIndex = idx + 1;
       const race = withUrl[idx];
       if (!race?.speedhiveUrl) return;
 
-      const status = await scrapperProxyService.getScrapeStatus();
-      if (status?.isRunning) {
-        // Scraper is busy - do not trigger a new scrape (avoids ping-pong between sessions)
-        return;
-      }
-
       const sessionId = extractSessionIdFromUrl(race.speedhiveUrl);
       if (!sessionId) return;
-
       await scrapperProxyService.startScrape(race.speedhiveUrl);
       console.log(`[ScrapperCron] Started scrape for race ${race.id}`);
     } catch (error) {

@@ -17,6 +17,9 @@ export class Race {
   @Column({ name: 'speedhive_url', type: 'varchar', length: 512, nullable: true })
   speedhiveUrl!: string | null;
 
+  @Column({ name: 'scrape_completed_at', type: 'bigint', nullable: true })
+  scrapeCompletedAt!: number | null;
+
   // Sync fields
   @Column({ name: 'updated_at', type: 'bigint', default: () => "strftime('%s','now') * 1000" })
   @Index()

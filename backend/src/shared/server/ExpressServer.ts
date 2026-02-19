@@ -5,6 +5,7 @@ import { syncRoutes } from '../../modules/sync/routes/syncRoutes';
 import { scrapperRoutes } from '../../modules/scrapper/routes/scrapperRoutes';
 import { scrapperProxyService } from '../../modules/scrapper/services/ScrapperProxyService';
 import { scraperAutoSetupService } from '../../modules/scrapper/services/ScraperAutoSetupService';
+import { scraperSessionService } from '../../modules/scrapper/services/ScraperSessionService';
 import { isValidSpeedhiveUrl, extractSessionIdFromUrl } from '../../shared/utils/speedhiveUrl';
 
 export class ExpressServer {
@@ -36,6 +37,22 @@ export class ExpressServer {
     // Health check
     this.app.get('/health', (_req, res) => {
       res.json({ status: 'ok' });
+    });
+
+    // Called by scraper when it auto-stops (session finished, no more live data)
+    this.app.post('/api/scraper/session-completed', async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+        if (!sessionId || typeof sessionId !== 'string') {
+          res.status(400).json({ success: false, error: 'sessionId is required' });
+          return;
+        }
+        const marked = await scraperSessionService.markSessionCompleted(sessionId.trim());
+        res.json({ success: true, marked });
+      } catch (error) {
+        console.error('Error marking session completed:', error);
+        res.status(500).json({ success: false, error: 'Internal error' });
+      }
     });
 
     // Scrapper trigger - must be before sync to avoid path conflicts
@@ -81,6 +98,7 @@ export class ExpressServer {
 
     // Debug: log all registered routes
     console.log('Registered API routes:');
+    console.log('  POST /api/scraper/session-completed');
     console.log('  POST /api/scrape/trigger');
     console.log('  /api/sync');
     console.log('  /api/races/:id/lap-times');

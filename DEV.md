@@ -20,6 +20,7 @@ cp scrapper/.env.example scrapper/.env
 - `DB_PATH` — SQLite database path
 - `NODE_ENV` — `development` or `production`
 - `PUPPETEER_EXECUTABLE_PATH` — Optional path to Chrome/Chromium
+- `BACKEND_URL` — Backend URL for session-completed callback (e.g. `http://localhost:3000`)
 
 ### Frontend
 Uses Vite proxy to `http://localhost:3000` for `/api` — no env vars required.
