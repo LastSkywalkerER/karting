@@ -40,8 +40,15 @@ export class PuppeteerScraper implements IScraperService {
         // Same session already being scraped - skip, avoid redundant restart
         return;
       }
-      // Different session - switch to new URL and re-setup observer for new page
+      // Different session - need fresh page to avoid exposeFunction("saveResultsToDB") conflict
       console.log(`Switching to ${url}`);
+      if (this.page) {
+        await this.page.close();
+        this.page = null;
+      }
+      if (!this.browser) throw new Error('Browser not initialized');
+      this.page = await this.browser.newPage();
+      await this.page.setViewport({ width: 1920, height: 1080 });
       await this.navigateToUrl(url, sessionId);
       await this.setupMutationObserver(sessionId);
       console.log('Scraper switched to new session. Monitoring for changes...');
