@@ -53,7 +53,7 @@ export class PuppeteerScraper implements IScraperService {
     console.log('Starting scraper...');
 
     try {
-      const launchOptions: puppeteer.LaunchOptions = {
+      const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
         headless: 'new',
       };
 
