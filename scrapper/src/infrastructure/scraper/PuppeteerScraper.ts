@@ -52,12 +52,24 @@ export class PuppeteerScraper implements IScraperService {
         this.page = null;
       }
       if (!this.browser) throw new Error('Browser not initialized');
-      this.page = await this.browser.newPage();
-      await this.page.setViewport({ width: 1920, height: 1080 });
-      await this.navigateToUrl(url, sessionId);
-      this.startIdleCheck();
-      await this.setupMutationObserver(sessionId);
-      console.log('Scraper switched to new session. Monitoring for changes...');
+      try {
+        this.page = await this.browser.newPage();
+        await this.page.setViewport({ width: 1920, height: 1080 });
+        await this.navigateToUrl(url, sessionId);
+        this.startIdleCheck();
+        await this.setupMutationObserver(sessionId);
+        console.log('Scraper switched to new session. Monitoring for changes...');
+      } catch (switchErr) {
+        console.error('[PuppeteerScraper] Switch failed, stopping scraper:', switchErr);
+        this.isRunning = false;
+        this.currentUrl = null;
+        this.currentSessionId = null;
+        if (this.page) {
+          await this.page.close().catch(() => {});
+          this.page = null;
+        }
+        throw switchErr;
+      }
       return;
     }
 
@@ -113,6 +125,8 @@ export class PuppeteerScraper implements IScraperService {
     }
   }
 
+  private static NAVIGATE_TIMEOUT_MS = 90_000;
+
   private async navigateToUrl(url: string, sessionId: string): Promise<void> {
     if (!this.page) throw new Error('Page not initialized');
 
@@ -121,39 +135,49 @@ export class PuppeteerScraper implements IScraperService {
     this.previousState.clear();
     this.resetIdleTracking();
 
-    console.log(`Navigating to ${url}`);
-    await this.page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: 60000,
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error('Navigation timeout - page may have WebSocket keeping it active')),
+        PuppeteerScraper.NAVIGATE_TIMEOUT_MS
+      );
     });
 
-    console.log('Waiting for results table...');
-    try {
-      await this.page.waitForSelector(
-        '.datatable-header-row, [class*="datatable-row"]',
-        { timeout: 30000 }
-      );
-    } catch {
-      console.log('Table selector not found, trying alternative approach...');
-    }
+    const navigate = async (): Promise<void> => {
+      console.log(`Navigating to ${url}`);
+      await this.page!.goto(url, {
+        waitUntil: 'load',
+        timeout: 60000,
+      });
 
-    console.log('Waiting for WebSocket data to load...');
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+      console.log('Waiting for results table...');
+      try {
+        await this.page!.waitForSelector(
+          '.datatable-header-row, [class*="datatable-row"]',
+          { timeout: 30000 }
+        );
+      } catch {
+        console.log('Table selector not found, trying alternative approach...');
+      }
 
-    try {
-      await this.page.waitForFunction(
-        () => {
-          const rows = (document as unknown as Document).querySelectorAll(
-            '[class*="datatable-row"]:not(.datatable-header-row)'
-          );
-          return rows && rows.length > 0;
-        },
-        { timeout: 15000 }
-      );
-    } catch {
-      // Session may have no data yet (race not started) - proceed anyway; MutationObserver will fire when data arrives
-      console.log('No data rows yet, continuing - will monitor for updates');
-    }
+      console.log('Waiting for WebSocket data to load...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      try {
+        await this.page!.waitForFunction(
+          () => {
+            const rows = (document as unknown as Document).querySelectorAll(
+              '[class*="datatable-row"]:not(.datatable-header-row)'
+            );
+            return rows && rows.length > 0;
+          },
+          { timeout: 15000 }
+        );
+      } catch {
+        console.log('No data rows yet, continuing - will monitor for updates');
+      }
+    };
+
+    await Promise.race([navigate(), timeoutPromise]);
   }
 
   async stop(): Promise<void> {
