@@ -51,6 +51,7 @@ export class PitlaneHistoryRepository {
       result.kart = {
         id: kart.id!,
         raceId: kart.raceId,
+        number: kart.number ?? 1,
         status: kart.status,
         teamId: kart.teamId,
       };

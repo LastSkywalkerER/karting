@@ -51,14 +51,17 @@ export class RaceRepository {
       id: race.id!,
       name: race.name,
       date: race.date,
+      speedhiveUrl: race.speedhiveUrl ?? undefined,
       raceTeams,
     };
   }
 
-  async create(data: { name: string; date: string }): Promise<Race> {
+  async create(data: { name: string; date: string; speedhiveUrl?: string | null }): Promise<Race> {
     const db = await getDatabase();
     const record: RaceRecord = {
-      ...data,
+      name: data.name,
+      date: data.date,
+      speedhiveUrl: data.speedhiveUrl ?? null,
       ...createSyncFields(),
     };
     const id = await db.add('races', record);
@@ -66,11 +69,15 @@ export class RaceRepository {
       id,
       name: data.name,
       date: data.date,
+      speedhiveUrl: data.speedhiveUrl ?? undefined,
       raceTeams: [],
     };
   }
 
-  async update(id: number, data: { name?: string; date?: string }): Promise<Race | undefined> {
+  async update(
+    id: number,
+    data: { name?: string; date?: string; speedhiveUrl?: string | null }
+  ): Promise<Race | undefined> {
     const db = await getDatabase();
     const existing = await db.get('races', id);
     if (!existing || existing.isDeleted) {

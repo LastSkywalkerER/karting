@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import 'dotenv/config';
 import { initializeDatabase, closeDatabase } from './shared/database/Database';
 import { ExpressServer } from './shared/server/ExpressServer';
+import { scrapperCronService } from './modules/scrapper/services/ScrapperCronService';
 
 async function start(): Promise<void> {
   try {
@@ -13,6 +14,9 @@ async function start(): Promise<void> {
     const port = parseInt(process.env.PORT || '3000', 10);
     const expressServer = new ExpressServer(port);
     await expressServer.start();
+
+    // Start scrapper cron (if SCRAPPER_URL is set)
+    scrapperCronService.start();
 
     // Graceful shutdown
     const shutdown = async () => {

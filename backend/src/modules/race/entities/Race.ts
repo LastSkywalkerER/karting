@@ -14,6 +14,9 @@ export class Race {
   @Column({ type: 'date' })
   date!: string;
 
+  @Column({ name: 'speedhive_url', type: 'varchar', length: 512, nullable: true })
+  speedhiveUrl!: string | null;
+
   // Sync fields
   @Column({ name: 'updated_at', type: 'bigint', default: () => "strftime('%s','now') * 1000" })
   @Index()

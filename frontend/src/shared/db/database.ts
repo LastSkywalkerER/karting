@@ -17,6 +17,7 @@ export interface RaceRecord extends SyncFields {
   id?: number;
   name: string;
   date: string;
+  speedhiveUrl?: string | null;
 }
 
 export interface RaceTeamRecord extends SyncFields {
@@ -28,6 +29,7 @@ export interface RaceTeamRecord extends SyncFields {
 export interface KartRecord extends SyncFields {
   id?: number;
   raceId: number;
+  number?: number; // Per-race display number (1, 2, 3...), default 1 for legacy records
   status: number;
   teamId: number | null;
 }
@@ -113,7 +115,7 @@ export interface RaceStatsDB extends DBSchema {
 }
 
 const DB_NAME = 'race-stats';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbInstance: IDBPDatabase<RaceStatsDB> | null = null;
 
@@ -192,6 +194,11 @@ export async function getDatabase(): Promise<IDBPDatabase<RaceStatsDB>> {
         if (!db.objectStoreNames.contains('current_app_state')) {
           db.createObjectStore('current_app_state', { keyPath: 'key' });
         }
+      }
+
+      // Version 4: Add speedhiveUrl to races (schema change only, no store changes)
+      if (oldVersion < 4) {
+        // Races store structure unchanged; speedhiveUrl is optional on RaceRecord
       }
     },
   });

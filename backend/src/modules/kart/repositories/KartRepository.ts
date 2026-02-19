@@ -9,9 +9,27 @@ export class KartRepository {
     this.repository = AppDataSource.getRepository(Kart);
   }
 
-  async create(data: { raceId: number; status?: number; teamId?: number | null }): Promise<Kart> {
+  private async getNextNumberForRace(raceId: number): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('k')
+      .select('COALESCE(MAX(k.number), 0) + 1', 'next')
+      .where('k.race_id = :raceId', { raceId })
+      .andWhere('k.is_deleted = 0')
+      .getRawOne<{ next: number }>();
+    return result?.next ?? 1;
+  }
+
+  async create(data: {
+    raceId: number;
+    status?: number;
+    teamId?: number | null;
+    number?: number;
+  }): Promise<Kart> {
+    const number =
+      data.number ?? (await this.getNextNumberForRace(data.raceId));
     const kart = this.repository.create({
       raceId: data.raceId,
+      number,
       status: data.status ?? 5,
       teamId: data.teamId ?? null
     });
@@ -19,10 +37,12 @@ export class KartRepository {
   }
 
   async createMany(raceId: number, count: number): Promise<Kart[]> {
+    let nextNumber = await this.getNextNumberForRace(raceId);
     const karts: Kart[] = [];
     for (let i = 0; i < count; i++) {
       const kart = this.repository.create({
         raceId,
+        number: nextNumber++,
         status: 5,
         teamId: null
       });
@@ -42,7 +62,7 @@ export class KartRepository {
     return await this.repository.find({
       where: { raceId },
       relations: ['team'],
-      order: { id: 'ASC' }
+      order: { number: 'ASC' }
     });
   }
 

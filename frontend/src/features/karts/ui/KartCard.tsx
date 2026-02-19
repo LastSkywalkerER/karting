@@ -63,7 +63,7 @@ export function KartCard({ kart, onClick, onStatusChange }: KartCardProps) {
           {kart.teamNumber ?? (kart.team?.id ? kart.team.id : '?')}
         </div>
         <div className="space-y-0.5 sm:space-y-1 pr-7 sm:pr-8">
-          <div className="text-xs sm:text-sm font-semibold text-slate-300">#{kart.id}</div>
+          <div className="text-xs sm:text-sm font-semibold text-slate-300">#{kart.number ?? kart.id}</div>
           {kart.team ? (
             <div className="flex items-center min-w-0">
               <span className="text-slate-200 text-xs sm:text-sm font-medium truncate min-w-0">

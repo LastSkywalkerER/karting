@@ -301,7 +301,7 @@ export function PitlanePage() {
                             <span className="text-white text-sm sm:text-base">{entry.team?.name || 'Unknown'}</span>
                           </div>
                         </td>
-                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-300 text-sm sm:text-base">#{entry.kartId}</td>
+                        <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-300 text-sm sm:text-base">#{entry.kart?.number ?? entry.kartId}</td>
                         <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-300 text-sm sm:text-base">{entry.lineNumber}</td>
                         <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-400 text-sm sm:text-base">
                           {new Date(entry.enteredAt).toLocaleTimeString()}
@@ -341,7 +341,7 @@ export function PitlanePage() {
       >
         <div className="flex flex-col gap-4">
           <p className="text-slate-300">
-            Remove <strong>Kart #{selectedEntry?.kartId}</strong> from the pitlane?
+            Remove <strong>Kart #{selectedEntry?.kart?.number ?? selectedEntry?.kartId}</strong> from the pitlane?
           </p>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">

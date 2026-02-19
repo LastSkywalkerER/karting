@@ -12,6 +12,7 @@ export interface Race {
   id: number;
   name: string;
   date: string;
+  speedhiveUrl?: string | null;
   raceTeams: RaceTeam[];
 }
 
@@ -24,11 +25,13 @@ export interface RaceTeamWithSync extends Omit<RaceTeam, 'team'>, SyncFields {}
 export interface CreateRaceRequest {
   name: string;
   date: string;
+  speedhiveUrl?: string | null;
 }
 
 export interface UpdateRaceRequest {
   name?: string;
   date?: string;
+  speedhiveUrl?: string | null;
 }
 
 export interface AddTeamToRaceRequest {

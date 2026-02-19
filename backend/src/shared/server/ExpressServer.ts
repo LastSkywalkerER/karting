@@ -1,7 +1,11 @@
 import express, { Express } from 'express';
 
-// Import sync route
+// Import routes
 import { syncRoutes } from '../../modules/sync/routes/syncRoutes';
+import { scrapperRoutes } from '../../modules/scrapper/routes/scrapperRoutes';
+import { scrapperProxyService } from '../../modules/scrapper/services/ScrapperProxyService';
+import { scraperAutoSetupService } from '../../modules/scrapper/services/ScraperAutoSetupService';
+import { isValidSpeedhiveUrl, extractSessionIdFromUrl } from '../../shared/utils/speedhiveUrl';
 
 export class ExpressServer {
   private app: Express;
@@ -34,12 +38,54 @@ export class ExpressServer {
       res.json({ status: 'ok' });
     });
 
+    // Scrapper trigger - must be before sync to avoid path conflicts
+    this.app.post('/api/scrape/trigger', async (req, res) => {
+      try {
+        const { url, raceId } = req.body;
+        if (!url || typeof url !== 'string') {
+          res.status(400).json({ success: false, error: 'url is required' });
+          return;
+        }
+        if (!isValidSpeedhiveUrl(url)) {
+          res.status(400).json({ success: false, error: 'Invalid SpeedHive URL' });
+          return;
+        }
+        const sessionId = extractSessionIdFromUrl(url);
+        const status = sessionId ? await scrapperProxyService.getScrapeStatus() : null;
+        if (status?.isRunning && status.sessionId === sessionId) {
+          // Skip redundant start - scrape already in progress
+        } else {
+          await scrapperProxyService.startScrape(url);
+        }
+        const id = raceId != null ? parseInt(String(raceId), 10) : NaN;
+        if (!isNaN(id)) {
+          scraperAutoSetupService.startAutoSetup(url, id);
+        } else {
+          scraperAutoSetupService.startAutoSetup(url);
+        }
+        res.json({ success: true, message: 'Scraper started, auto-setup in progress' });
+      } catch (error) {
+        console.error('Error triggering scrape:', error);
+        res.status(502).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Proxy error',
+        });
+      }
+    });
+
     // Sync API route (local-first architecture)
     this.app.use('/api/sync', syncRoutes);
 
+    // Scrapper proxy routes (lap-times, pitlane-events)
+    this.app.use(scrapperRoutes);
+
     // Debug: log all registered routes
     console.log('Registered API routes:');
+    console.log('  POST /api/scrape/trigger');
     console.log('  /api/sync');
+    console.log('  /api/races/:id/lap-times');
+    console.log('  /api/races/:id/pitlane-events');
+    console.log('  /api/races/:raceId/pitlane-events/:eventId/acknowledge');
   }
 
   start(): Promise<void> {

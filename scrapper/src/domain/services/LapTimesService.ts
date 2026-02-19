@@ -1,6 +1,32 @@
 import { RaceResult } from '../entities/RaceResult';
 import { ILapTimesService, LapTimesTable } from './ILapTimesService';
 
+/** Parse lap time string (e.g. "1:23.456" or "23.456") to milliseconds. Returns null if unparseable. */
+function parseLapTimeToMs(lapTime: string | null): number | null {
+  if (!lapTime || typeof lapTime !== 'string') return null;
+  const trimmed = lapTime.trim().toUpperCase();
+  if (trimmed === 'IN PIT' || trimmed === '') return null;
+  const parts = trimmed.split(':');
+  let totalMs = 0;
+  if (parts.length === 2) {
+    const minutes = parseInt(parts[0], 10);
+    const secParts = parts[1].split('.');
+    const seconds = parseInt(secParts[0], 10);
+    const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0').slice(0, 3), 10) : 0;
+    if (isNaN(minutes) || isNaN(seconds)) return null;
+    totalMs = minutes * 60000 + seconds * 1000 + ms;
+  } else if (parts.length === 1) {
+    const secParts = parts[0].split('.');
+    const seconds = parseInt(secParts[0], 10);
+    const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0').slice(0, 3), 10) : 0;
+    if (isNaN(seconds)) return null;
+    totalMs = seconds * 1000 + ms;
+  } else {
+    return null;
+  }
+  return totalMs > 0 ? totalMs : null;
+}
+
 export class LapTimesService implements ILapTimesService {
   buildLapTimesTable(results: RaceResult[]): LapTimesTable {
     if (results.length === 0) {
@@ -15,13 +41,21 @@ export class LapTimesService implements ILapTimesService {
     const lapNumbersSet = new Set<number>();
     const competitorNumbersSet = new Set<string>();
 
-    // Collect all unique laps and competitor numbers
+    // Map competitorNumber -> competitorName (use first occurrence)
+    const competitorNumberToName = new Map<string, string>();
     for (const result of results) {
       if (result.laps !== null && result.laps !== undefined) {
         lapNumbersSet.add(result.laps);
       }
       if (result.competitorNumber !== null && result.competitorNumber !== undefined) {
         competitorNumbersSet.add(result.competitorNumber);
+        if (
+          result.competitorName &&
+          result.competitorName.trim() &&
+          !competitorNumberToName.has(result.competitorNumber)
+        ) {
+          competitorNumberToName.set(result.competitorNumber, result.competitorName.trim());
+        }
       }
     }
 
@@ -59,33 +93,42 @@ export class LapTimesService implements ILapTimesService {
       }
     }
 
-    // Find maximum laps value for each competitor from original results
-    const competitorMaxLaps = new Map<string, number>();
-    for (const result of results) {
-      if (result.competitorNumber === null || result.competitorNumber === undefined) continue;
-      if (result.laps === null || result.laps === undefined) continue;
-      
-      const currentMax = competitorMaxLaps.get(result.competitorNumber) || 0;
-      if (result.laps > currentMax) {
-        competitorMaxLaps.set(result.competitorNumber, result.laps);
+    // Compute average lap time (ms) per competitor from firstOccurrenceMap
+    const competitorAvgLapMs = new Map<string, number>();
+    for (const compNum of competitorNumbers) {
+      const lapTimes: number[] = [];
+      for (const lap of lapNumbers) {
+        const key = `${lap}-${compNum}`;
+        const occ = firstOccurrenceMap.get(key);
+        const ms = occ ? parseLapTimeToMs(occ.lastLapTime) : null;
+        if (ms !== null) lapTimes.push(ms);
+      }
+      if (lapTimes.length > 0) {
+        const avg = lapTimes.reduce((a, b) => a + b, 0) / lapTimes.length;
+        competitorAvgLapMs.set(compNum, avg);
       }
     }
 
-    // Sort competitor numbers by maximum laps value (descending), then by competitor number if equal
+    // Sort by best average lap time (ascending = fastest first), fallback to max laps then number
+    const competitorMaxLaps = new Map<string, number>();
+    for (const result of results) {
+      if (result.competitorNumber == null || result.laps == null) continue;
+      const cur = competitorMaxLaps.get(result.competitorNumber) || 0;
+      if (result.laps > cur) competitorMaxLaps.set(result.competitorNumber, result.laps);
+    }
+
     const sortedCompetitorNumbers = [...competitorNumbers].sort((a, b) => {
+      const avgA = competitorAvgLapMs.get(a);
+      const avgB = competitorAvgLapMs.get(b);
+      if (avgA != null && avgB != null) return avgA - avgB;
+      if (avgA != null) return -1;
+      if (avgB != null) return 1;
       const maxLapsA = competitorMaxLaps.get(a) || 0;
       const maxLapsB = competitorMaxLaps.get(b) || 0;
-      
-      if (maxLapsB !== maxLapsA) {
-        return maxLapsB - maxLapsA; // Descending order
-      }
-      
-      // If equal max laps, sort by competitor number
+      if (maxLapsB !== maxLapsA) return maxLapsB - maxLapsA;
       const numA = parseInt(a, 10);
       const numB = parseInt(b, 10);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-      }
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
       return a.localeCompare(b);
     });
 
@@ -107,9 +150,14 @@ export class LapTimesService implements ILapTimesService {
       data.push(row);
     }
 
+    const competitorNames = sortedCompetitorNumbers.map(
+      (num) => competitorNumberToName.get(num) || `Team ${num}`
+    );
+
     return {
       lapNumbers,
       competitorNumbers: sortedCompetitorNumbers,
+      competitorNames,
       data
     };
   }

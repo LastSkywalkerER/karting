@@ -3,6 +3,7 @@ import { DatabaseConnection } from './infrastructure/database/Database';
 import { RaceResultRepository } from './infrastructure/database/RaceResultRepository';
 import { TeamKartStatusRepository } from './infrastructure/database/TeamKartStatusRepository';
 import { PitlaneKartStatusRepository } from './infrastructure/database/PitlaneKartStatusRepository';
+import { PitlaneEntryEventRepository } from './infrastructure/database/PitlaneEntryEventRepository';
 import { PuppeteerScraper } from './infrastructure/scraper/PuppeteerScraper';
 import { LapTimesService } from './domain/services/LapTimesService';
 import { RaceResultController } from './presentation/controllers/RaceResultController';
@@ -15,7 +16,11 @@ async function start(): Promise<void> {
     const raceResultRepository = new RaceResultRepository(databaseConnection);
     const teamKartStatusRepository = new TeamKartStatusRepository(databaseConnection);
     const pitlaneKartStatusRepository = new PitlaneKartStatusRepository(databaseConnection);
-    const scraperService = new PuppeteerScraper(raceResultRepository);
+    const pitlaneEntryEventRepository = new PitlaneEntryEventRepository(databaseConnection);
+    const scraperService = new PuppeteerScraper(
+      raceResultRepository,
+      pitlaneEntryEventRepository
+    );
 
     // Domain layer
     const lapTimesService = new LapTimesService();
@@ -26,21 +31,15 @@ async function start(): Promise<void> {
       scraperService,
       lapTimesService,
       teamKartStatusRepository,
-      pitlaneKartStatusRepository
+      pitlaneKartStatusRepository,
+      pitlaneEntryEventRepository
     );
 
     const port = parseInt(process.env.PORT || '3000', 10);
     const expressServer = new ExpressServer(raceResultController, port);
 
-    // Start Express server
+    // Start Express server (scraper is started on demand via POST /api/scrape/start)
     await expressServer.start();
-
-    // Start scraper in background (non-blocking)
-    console.log('Starting scraper in background...');
-    scraperService.start().catch((error) => {
-      console.error('Failed to start scraper:', error.message);
-      console.log('Server will continue running without scraper');
-    });
 
     // Graceful shutdown
     const shutdown = async () => {

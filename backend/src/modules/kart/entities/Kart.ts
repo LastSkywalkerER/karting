@@ -1,11 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, Unique } from 'typeorm';
 import { Race } from '../../race/entities/Race';
 import { Team } from '../../team/entities/Team';
 
 @Entity('karts')
+@Unique('UQ_karts_race_number', ['raceId', 'number'])
 export class Kart {
   @PrimaryGeneratedColumn()
   id!: number;
+
+  @Column({ type: 'int', default: 1 })
+  number!: number;
 
   @Column({ type: 'int', default: 1 })
   status!: number;

@@ -349,9 +349,9 @@ export function KartsPage() {
                             event.stopPropagation();
                             openRemoveDialog(entry);
                           }}
-                          title={`Kart #${entry.kartId}`}
+                          title={`Kart #${entry.kart?.number ?? entry.kartId}`}
                         >
-                          {entry.kartId}
+                          {entry.kart?.number ?? entry.kartId}
                         </button>
                       ))}
                     </div>
@@ -414,7 +414,7 @@ export function KartsPage() {
       >
         <div className="flex flex-col gap-4">
           <p className="text-slate-300">
-            Remove <strong>Kart #{selectedEntry?.kartId}</strong> from the pitlane?
+            Remove <strong>Kart #{selectedEntry?.kart?.number ?? selectedEntry?.kartId}</strong> from the pitlane?
           </p>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">

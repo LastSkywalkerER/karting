@@ -90,7 +90,7 @@ export function PitlaneView({
                         }}
                         title={`Status ${entry.kart?.status ?? 1}`}
                       >
-                        {entry.kartId}
+                        {entry.kart?.number ?? entry.kartId}
                       </div>
                     </div>
                     <Button

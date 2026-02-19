@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Dialog, InputNumber, InputText, Select } from '@/shared/ui';
+import { Button, Dialog, InputNumber, InputText, Select, TabPanel, TabView } from '@/shared/ui';
 import { fetchRaceById, addTeamToRace, removeTeamFromRace, RaceDetail } from '@/features/races';
 import { fetchTeams } from '@/features/teams';
 import { fetchKartsByRace, createKartsBulk } from '@/features/karts';
 import { fetchPitlaneConfig, createPitlaneConfig, PitlaneConfigForm } from '@/features/pitlane';
+import {
+  LapTimesTable,
+  PitlaneEventModal,
+  fetchPitlaneEvents,
+  acknowledgePitlaneEvent,
+} from '@/features/lapTimes';
+import type { PitlaneModalSource } from '@/features/lapTimes';
 import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Race } from '@/shared/types/race';
 import type { Team } from '@/shared/types/team';
@@ -31,6 +38,11 @@ export function RaceDetailPage() {
   const [teamNumber, setTeamNumber] = useState('');
   const [kartsCount, setKartsCount] = useState<number>(10);
   const [pitlaneFormData, setPitlaneFormData] = useState({ linesCount: 4, queueSize: 1 });
+
+  // Lap times / pitlane events
+  const processedEventIdsRef = useRef<Set<number>>(new Set());
+  const [pitlaneModalVisible, setPitlaneModalVisible] = useState(false);
+  const [pitlaneModalSource, setPitlaneModalSource] = useState<PitlaneModalSource | null>(null);
 
   const loadData = async () => {
     if (!id) return;
@@ -72,6 +84,50 @@ export function RaceDetailPage() {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const pollPitlaneEvents = useCallback(async () => {
+    if (!id || !race?.speedhiveUrl) return;
+    const raceId = parseInt(id, 10);
+    try {
+      const res = await fetchPitlaneEvents(raceId, false);
+      if (!res?.data) return;
+      const newEvents = res.data.filter((evt) => !processedEventIdsRef.current.has(evt.id));
+      if (newEvents.length > 0) {
+        const evt = newEvents[0];
+        processedEventIdsRef.current.add(evt.id);
+        setPitlaneModalSource({ type: 'event', event: evt });
+        setPitlaneModalVisible(true);
+      }
+    } catch {
+      // Ignore poll errors
+    }
+  }, [id, race?.speedhiveUrl]);
+
+  useEffect(() => {
+    if (!race?.speedhiveUrl) return;
+    pollPitlaneEvents();
+    const interval = setInterval(pollPitlaneEvents, 5000);
+    return () => clearInterval(interval);
+  }, [race?.speedhiveUrl, pollPitlaneEvents]);
+
+  const handlePitCellClick = useCallback((teamNumber: string, lapNumber: number) => {
+    setPitlaneModalSource({ type: 'manual', teamNumber, lapNumber });
+    setPitlaneModalVisible(true);
+  }, []);
+
+  const handleAcknowledgePitlaneEvent = useCallback(async () => {
+    if (!id || pitlaneModalSource?.type !== 'event') return;
+    const raceId = parseInt(id, 10);
+    const eventId = pitlaneModalSource.event.id;
+    try {
+      await acknowledgePitlaneEvent(raceId, eventId);
+      processedEventIdsRef.current.add(eventId);
+      setPitlaneModalVisible(false);
+      setPitlaneModalSource(null);
+    } catch (err) {
+      console.error('Failed to acknowledge event:', err);
+    }
+  }, [id, pitlaneModalSource]);
 
   const availableTeams = allTeams.filter(
     (team) => !race?.raceTeams?.some((entry) => entry.teamId === team.id)
@@ -175,17 +231,56 @@ export function RaceDetailPage() {
         </div>
       </div>
 
-      <RaceDetail
-        race={race}
-        karts={karts}
-        pitlaneConfig={pitlaneConfig}
-        onAddTeam={() => setAddTeamDialogVisible(true)}
-        onRemoveTeam={handleRemoveTeam}
-        onAddKarts={() => setAddKartsDialogVisible(true)}
-        onManageKarts={() => navigate(`/karts?raceId=${race.id}`)}
-        onConfigurePitlane={() => setPitlaneConfigDialogVisible(true)}
-        onViewPitlane={() => navigate(`/pitlane?raceId=${race.id}`)}
-        availableTeamsCount={availableTeams.length}
+      {race.speedhiveUrl ? (
+        <TabView>
+          <TabPanel header="Overview">
+            <RaceDetail
+              race={race}
+              karts={karts}
+              pitlaneConfig={pitlaneConfig}
+              onAddTeam={() => setAddTeamDialogVisible(true)}
+              onRemoveTeam={handleRemoveTeam}
+              onAddKarts={() => setAddKartsDialogVisible(true)}
+              onManageKarts={() => navigate(`/karts?raceId=${race.id}`)}
+              onConfigurePitlane={() => setPitlaneConfigDialogVisible(true)}
+              onViewPitlane={() => navigate(`/pitlane?raceId=${race.id}`)}
+              availableTeamsCount={availableTeams.length}
+            />
+          </TabPanel>
+          <TabPanel header="Lap Times">
+            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+              <LapTimesTable
+                raceId={race.id}
+                onPitCellClick={handlePitCellClick}
+              />
+            </div>
+          </TabPanel>
+        </TabView>
+      ) : (
+        <RaceDetail
+          race={race}
+          karts={karts}
+          pitlaneConfig={pitlaneConfig}
+          onAddTeam={() => setAddTeamDialogVisible(true)}
+          onRemoveTeam={handleRemoveTeam}
+          onAddKarts={() => setAddKartsDialogVisible(true)}
+          onManageKarts={() => navigate(`/karts?raceId=${race.id}`)}
+          onConfigurePitlane={() => setPitlaneConfigDialogVisible(true)}
+          onViewPitlane={() => navigate(`/pitlane?raceId=${race.id}`)}
+          availableTeamsCount={availableTeams.length}
+        />
+      )}
+
+      <PitlaneEventModal
+        visible={pitlaneModalVisible}
+        onHide={() => {
+          setPitlaneModalVisible(false);
+          setPitlaneModalSource(null);
+        }}
+        source={pitlaneModalSource}
+        onAcknowledge={
+          pitlaneModalSource?.type === 'event' ? handleAcknowledgePitlaneEvent : undefined
+        }
       />
 
       {/* Add Team Dialog */}

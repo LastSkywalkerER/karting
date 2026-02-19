@@ -5,6 +5,7 @@ import { Race } from './race';
 export interface Kart {
   id: number;
   raceId: number;
+  number: number;
   status: number;
   teamId: number | null;
   teamNumber?: string | null; // Team number from race_teams for this race

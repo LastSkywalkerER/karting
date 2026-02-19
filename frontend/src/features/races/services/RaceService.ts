@@ -1,4 +1,5 @@
 import { raceRepository } from '../db/RaceRepository';
+import { isValidSpeedhiveUrl } from '@/shared/utils/speedhiveUrl';
 import type { Race, RaceTeam } from '@/shared/types/race';
 
 export interface RaceServiceResult<T> {
@@ -8,7 +9,11 @@ export interface RaceServiceResult<T> {
 }
 
 export class RaceService {
-  async createRace(data: { name: string; date: string }): Promise<RaceServiceResult<Race>> {
+  async createRace(data: {
+    name: string;
+    date: string;
+    speedhiveUrl?: string | null;
+  }): Promise<RaceServiceResult<Race>> {
     try {
       if (!data.name || data.name.trim() === '') {
         return { success: false, error: 'Race name is required' };
@@ -16,10 +21,20 @@ export class RaceService {
       if (!data.date) {
         return { success: false, error: 'Race date is required' };
       }
+      if (data.speedhiveUrl !== undefined && data.speedhiveUrl !== null && data.speedhiveUrl !== '') {
+        if (!isValidSpeedhiveUrl(data.speedhiveUrl)) {
+          return {
+            success: false,
+            error:
+              'Invalid SpeedHive URL. Example: https://speedhive.mylaps.com/livetiming/.../sessions/...',
+          };
+        }
+      }
 
       const race = await raceRepository.create({
         name: data.name.trim(),
         date: data.date,
+        speedhiveUrl: data.speedhiveUrl,
       });
       return { success: true, data: race };
     } catch (error) {
@@ -50,10 +65,10 @@ export class RaceService {
 
   async updateRace(
     id: number,
-    data: { name?: string; date?: string }
+    data: { name?: string; date?: string; speedhiveUrl?: string | null }
   ): Promise<RaceServiceResult<Race>> {
     try {
-      const updateData: { name?: string; date?: string } = {};
+      const updateData: { name?: string; date?: string; speedhiveUrl?: string | null } = {};
 
       if (data.name !== undefined) {
         if (data.name.trim() === '') {
@@ -64,6 +79,17 @@ export class RaceService {
 
       if (data.date !== undefined) {
         updateData.date = data.date;
+      }
+
+      if (data.speedhiveUrl !== undefined) {
+        if (data.speedhiveUrl && !isValidSpeedhiveUrl(data.speedhiveUrl)) {
+          return {
+            success: false,
+            error:
+              'Invalid SpeedHive URL. Example: https://speedhive.mylaps.com/livetiming/.../sessions/...',
+          };
+        }
+        updateData.speedhiveUrl = data.speedhiveUrl;
       }
 
       const race = await raceRepository.update(id, updateData);

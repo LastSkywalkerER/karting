@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui';
 import { fetchRaces, createRace, deleteRace, RaceList, RaceForm } from '@/features/races';
+import { triggerScrape } from '@/features/lapTimes';
 import { useCurrentRace } from '@/shared/context/CurrentRaceContext';
 import type { Race } from '@/shared/types/race';
 
@@ -11,7 +12,11 @@ export function RacesPage() {
   const [races, setRaces] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const [formData, setFormData] = useState({ name: '', date: null as Date | null });
+  const [formData, setFormData] = useState({
+    name: '',
+    date: null as Date | null,
+    speedhiveUrl: '',
+  });
 
   const loadRaces = async () => {
     setLoading(true);
@@ -32,18 +37,28 @@ export function RacesPage() {
   }, []);
 
   const openCreateDialog = () => {
-    setFormData({ name: '', date: new Date() });
+    setFormData({ name: '', date: new Date(), speedhiveUrl: '' });
     setDialogVisible(true);
   };
 
   const handleCreate = async () => {
     if (!formData.date) return;
-    
+
+    const speedhiveUrl = formData.speedhiveUrl.trim() || null;
     try {
       const dateStr = formData.date.toISOString().split('T')[0];
-      await createRace({ name: formData.name, date: dateStr });
+      const result = await createRace({
+        name: formData.name,
+        date: dateStr,
+        speedhiveUrl,
+      });
       setDialogVisible(false);
       loadRaces();
+      if (speedhiveUrl && result.data?.id) {
+        triggerScrape(speedhiveUrl, result.data.id).catch((err) =>
+          console.error('Failed to trigger scraper:', err)
+        );
+      }
     } catch (error) {
       console.error('Failed to create race:', error);
     }

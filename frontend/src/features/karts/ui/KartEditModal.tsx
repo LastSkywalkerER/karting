@@ -32,7 +32,7 @@ export function KartEditModal({
     <Dialog
       visible={visible}
       onHide={onHide}
-      header={`Edit Kart #${kart?.id}`}
+      header={`Edit Kart #${kart?.number ?? kart?.id}`}
       style={{ width: '400px' }}
     >
       <div className="flex flex-col gap-4">

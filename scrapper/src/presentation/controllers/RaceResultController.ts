@@ -4,7 +4,9 @@ import { IScraperService } from '../../domain/services/IScraperService';
 import { ILapTimesService } from '../../domain/services/ILapTimesService';
 import { ITeamKartStatusRepository } from '../../domain/repositories/ITeamKartStatusRepository';
 import { IPitlaneKartStatusRepository } from '../../domain/repositories/IPitlaneKartStatusRepository';
+import { IPitlaneEntryEventRepository } from '../../domain/repositories/IPitlaneEntryEventRepository';
 import { PitlaneKartStatusEntity } from '../../domain/entities/PitlaneKartStatus';
+import { extractSessionIdFromUrl } from '../../shared/utils/speedhiveUrl';
 
 export class RaceResultController {
   constructor(
@@ -12,7 +14,8 @@ export class RaceResultController {
     private scraperService: IScraperService,
     private lapTimesService: ILapTimesService,
     private teamKartStatusRepository: ITeamKartStatusRepository,
-    private pitlaneKartStatusRepository: IPitlaneKartStatusRepository
+    private pitlaneKartStatusRepository: IPitlaneKartStatusRepository,
+    private pitlaneEntryEventRepository: IPitlaneEntryEventRepository
   ) {}
 
   getHealth(_req: Request, res: Response): void {
@@ -268,6 +271,109 @@ export class RaceResultController {
       });
     } catch (error) {
       console.error('Error updating pitlane kart statuses:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  getScrapeStatus(_req: Request, res: Response): void {
+    const status = this.scraperService.getStatus();
+    res.json({
+      isRunning: status.isRunning,
+      sessionId: status.sessionId,
+      currentUrl: status.currentUrl
+    });
+  }
+
+  async startScrape(req: Request, res: Response): Promise<void> {
+    try {
+      const { url } = req.body;
+      if (!url || typeof url !== 'string') {
+        res.status(400).json({
+          success: false,
+          error: 'url (string) is required in request body'
+        });
+        return;
+      }
+      const sessionId = extractSessionIdFromUrl(url);
+      if (sessionId) {
+        const status = this.scraperService.getStatus();
+        if (status.isRunning && status.sessionId === sessionId) {
+          res.json({
+            success: true,
+            message: 'Scrape already in progress for this session',
+            alreadyInProgress: true
+          });
+          return;
+        }
+      }
+      await this.scraperService.start(url);
+      res.json({
+        success: true,
+        message: 'Scraper started'
+      });
+    } catch (error) {
+      console.error('Error starting scraper:', error);
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Invalid SpeedHive URL'
+      });
+    }
+  }
+
+  async getPitlaneEntryEvents(req: Request, res: Response): Promise<void> {
+    try {
+      const { sessionId, acknowledged } = req.query;
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: 'sessionId query parameter is required'
+        });
+        return;
+      }
+      const ackFilter =
+        acknowledged === 'true'
+          ? true
+          : acknowledged === 'false'
+            ? false
+            : undefined;
+      const events = this.pitlaneEntryEventRepository.findBySession(
+        sessionId as string,
+        ackFilter
+      );
+      res.json({
+        success: true,
+        count: events.length,
+        data: events
+      });
+    } catch (error) {
+      console.error('Error getting pitlane events:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  async acknowledgePitlaneEvent(req: Request, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid event id'
+        });
+        return;
+      }
+      this.pitlaneEntryEventRepository.acknowledge(id);
+      res.json({
+        success: true,
+        message: 'Event acknowledged'
+      });
+    } catch (error) {
+      console.error('Error acknowledging event:', error);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

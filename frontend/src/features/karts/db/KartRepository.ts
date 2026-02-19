@@ -48,6 +48,7 @@ export class KartRepository {
     return {
       id: record.id!,
       raceId: record.raceId,
+      number: record.number ?? 1,
       status: record.status,
       teamId: record.teamId,
     };
@@ -81,12 +82,15 @@ export class KartRepository {
 
   async create(data: {
     raceId: number;
+    number?: number;
     status?: number;
     teamId?: number | null;
   }): Promise<Kart> {
     const db = await getDatabase();
+    const nextNumber = data.number ?? (await this.getNextNumberForRace(data.raceId));
     const record: KartRecord = {
       raceId: data.raceId,
+      number: nextNumber,
       status: data.status ?? 5,
       teamId: data.teamId ?? null,
       ...createSyncFields(),
@@ -95,13 +99,24 @@ export class KartRepository {
     return { ...this.toKart(record), id };
   }
 
+  private async getNextNumberForRace(raceId: number): Promise<number> {
+    const db = await getDatabase();
+    const karts = await db.getAllFromIndex('karts', 'raceId', raceId);
+    const active = karts.filter((k) => !k.isDeleted);
+    if (active.length === 0) return 1;
+    const max = Math.max(...active.map((k) => k.number ?? 1));
+    return max + 1;
+  }
+
   async createMany(raceId: number, count: number): Promise<Kart[]> {
     const db = await getDatabase();
     const karts: Kart[] = [];
+    let nextNumber = await this.getNextNumberForRace(raceId);
 
     for (let i = 0; i < count; i++) {
       const record: KartRecord = {
         raceId,
+        number: nextNumber++,
         status: 5,
         teamId: null,
         ...createSyncFields(),
