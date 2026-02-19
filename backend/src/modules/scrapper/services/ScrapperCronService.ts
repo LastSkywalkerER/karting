@@ -42,13 +42,14 @@ export class ScrapperCronService {
       const race = withUrl[idx];
       if (!race?.speedhiveUrl) return;
 
-      const sessionId = extractSessionIdFromUrl(race.speedhiveUrl);
-      if (sessionId) {
-        const status = await scrapperProxyService.getScrapeStatus();
-        if (status?.isRunning && status.sessionId === sessionId) {
-          return;
-        }
+      const status = await scrapperProxyService.getScrapeStatus();
+      if (status?.isRunning) {
+        // Scraper is busy - do not trigger a new scrape (avoids ping-pong between sessions)
+        return;
       }
+
+      const sessionId = extractSessionIdFromUrl(race.speedhiveUrl);
+      if (!sessionId) return;
 
       await scrapperProxyService.startScrape(race.speedhiveUrl);
       console.log(`[ScrapperCron] Started scrape for race ${race.id}`);

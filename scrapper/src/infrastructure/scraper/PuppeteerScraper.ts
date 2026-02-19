@@ -10,6 +10,8 @@ import {
 import * as fs from 'fs';
 
 const IN_PIT = 'IN PIT';
+const IDLE_STOP_MS = 60_000; // Auto-stop when no data changes for 1 minute
+const IDLE_CHECK_INTERVAL_MS = 15_000; // Check every 15 seconds
 
 export class PuppeteerScraper implements IScraperService {
   private browser: Browser | null = null;
@@ -19,6 +21,9 @@ export class PuppeteerScraper implements IScraperService {
   private currentSessionId: string | null = null;
   private previousState: Map<string, { lastLapTime: string | null; laps: number | null }> =
     new Map();
+  private lastDataFingerprint: string | null = null;
+  private lastDataChangeTime: number | null = null;
+  private idleCheckIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private repository: IRaceResultRepository,
@@ -37,7 +42,7 @@ export class PuppeteerScraper implements IScraperService {
 
     if (this.isRunning && this.page) {
       if (this.currentSessionId === sessionId) {
-        // Same session already being scraped - skip, avoid redundant restart
+        // Same session already being scraped - skip, avoid redundant switch
         return;
       }
       // Different session - need fresh page to avoid exposeFunction("saveResultsToDB") conflict
@@ -50,6 +55,7 @@ export class PuppeteerScraper implements IScraperService {
       this.page = await this.browser.newPage();
       await this.page.setViewport({ width: 1920, height: 1080 });
       await this.navigateToUrl(url, sessionId);
+      this.startIdleCheck();
       await this.setupMutationObserver(sessionId);
       console.log('Scraper switched to new session. Monitoring for changes...');
       return;
@@ -90,6 +96,7 @@ export class PuppeteerScraper implements IScraperService {
 
       console.log('Table found, setting up MutationObserver...');
 
+      this.startIdleCheck();
       await this.setupMutationObserver(sessionId);
       console.log('Scraper is running. Monitoring for changes...');
     } catch (error) {
@@ -112,6 +119,7 @@ export class PuppeteerScraper implements IScraperService {
     this.currentUrl = url;
     this.currentSessionId = sessionId;
     this.previousState.clear();
+    this.resetIdleTracking();
 
     console.log(`Navigating to ${url}`);
     await this.page.goto(url, {
@@ -155,6 +163,8 @@ export class PuppeteerScraper implements IScraperService {
     }
 
     console.log('Stopping scraper...');
+    this.stopIdleCheck();
+    this.resetIdleTracking();
     this.isRunning = false;
     this.currentUrl = null;
     this.currentSessionId = null;
@@ -166,6 +176,35 @@ export class PuppeteerScraper implements IScraperService {
     }
     this.page = null;
     console.log('Scraper stopped');
+  }
+
+  private resetIdleTracking(): void {
+    this.lastDataFingerprint = null;
+    this.lastDataChangeTime = null;
+  }
+
+  private startIdleCheck(): void {
+    this.stopIdleCheck();
+    this.idleCheckIntervalId = setInterval(() => {
+      if (!this.lastDataChangeTime) return;
+      if (Date.now() - this.lastDataChangeTime >= IDLE_STOP_MS) {
+        console.log('[PuppeteerScraper] No data changes for 1 minute, auto-stopping');
+        this.stop();
+      }
+    }, IDLE_CHECK_INTERVAL_MS);
+  }
+
+  private stopIdleCheck(): void {
+    if (this.idleCheckIntervalId) {
+      clearInterval(this.idleCheckIntervalId);
+      this.idleCheckIntervalId = null;
+    }
+  }
+
+  private fingerprint(results: RaceResultData[]): string {
+    return results
+      .map((r) => `${r.position}|${r.competitorNumber}|${r.laps ?? ''}|${r.lastLapTime ?? ''}`)
+      .join(';');
   }
 
   getStatus(): ScraperStatus {
@@ -185,10 +224,17 @@ export class PuppeteerScraper implements IScraperService {
     const pitlaneEventRepository = this.pitlaneEventRepository;
     const previousState = this.previousState;
 
+    const scraper = this;
     await this.page.exposeFunction(
       'saveResultsToDB',
       async (results: RaceResultData[]) => {
         if (!results || results.length === 0) return;
+
+        const fp = scraper.fingerprint(results);
+        if (fp !== scraper.lastDataFingerprint) {
+          scraper.lastDataFingerprint = fp;
+          scraper.lastDataChangeTime = Date.now();
+        }
 
         const { RaceResultEntity } = await import(
           '../../domain/entities/RaceResult'
