@@ -53,16 +53,25 @@ export class PuppeteerScraper implements IScraperService {
     console.log('Starting scraper...');
 
     try {
-      const launchOptions: Record<string, string> = {};
+      const launchOptions: puppeteer.LaunchOptions = {
+        headless: 'new',
+      };
+
       const chromePath =
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
       if (process.platform === 'darwin' && fs.existsSync(chromePath)) {
         launchOptions.executablePath = chromePath;
       } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        // Required for Chrome in Docker: sandbox requires namespaces which fail with "Operation not permitted"
+        launchOptions.args = [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ];
       }
 
-      this.browser = await puppeteer.launch(launchOptions as never);
+      this.browser = await puppeteer.launch(launchOptions);
       this.page = await this.browser.newPage();
       await this.page.setViewport({ width: 1920, height: 1080 });
 
