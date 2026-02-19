@@ -3,6 +3,7 @@ import AppDataSource from '../../../shared/database/Database';
 import { Race } from '../../race/entities/Race';
 import { Not, IsNull } from 'typeorm';
 import { scrapperProxyService } from './ScrapperProxyService';
+import { scraperAutoSetupService } from './ScraperAutoSetupService';
 import { extractSessionIdFromUrl } from '../../../shared/utils/speedhiveUrl';
 
 export class ScrapperCronService {
@@ -50,7 +51,9 @@ export class ScrapperCronService {
 
       const sessionId = extractSessionIdFromUrl(race.speedhiveUrl);
       if (!sessionId) return;
+
       await scrapperProxyService.startScrape(race.speedhiveUrl);
+      scraperAutoSetupService.startAutoSetup(race.speedhiveUrl, race.id);
       console.log(`[ScrapperCron] Started scrape for race ${race.id}`);
     } catch (error) {
       console.error('[ScrapperCron] Error:', error);
