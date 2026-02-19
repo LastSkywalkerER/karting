@@ -2,9 +2,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck
+# Install curl for healthcheck and build tools for better-sqlite3
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl \
+  && apt-get install -y --no-install-recommends curl python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies

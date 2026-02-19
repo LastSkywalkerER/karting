@@ -1,4 +1,26 @@
 services:
+  scrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scrapper
+    platform: linux/amd64
+    container_name: race-stats-scrapper
+    environment:
+      - PORT=3001
+      - DB_PATH=/app/data/race_data.db
+      - NODE_ENV=production
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    volumes:
+      - scrapper_data:/app/data
+    networks:
+      - race-stats-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   backend:
     build:
       context: ./backend
@@ -12,6 +34,9 @@ services:
       - SCRAPPER_URL=http://scrapper:3001
     volumes:
       - backend_data:/app/data
+    depends_on:
+      scrapper:
+        condition: service_healthy
     networks:
       - race-stats-network
     healthcheck:
@@ -19,28 +44,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  scrapper:
-    build:
-      context: .
-      dockerfile: Dockerfile.scrapper
-    platform: linux/amd64
-    container_name: race-stats-scrapper
-    environment:
-      - PORT=3001
-      - DB_PATH=/app/data/race_data.db
-      - NODE_ENV=production
-    volumes:
-      - scrapper_data:/app/data
-    networks:
-      - race-stats-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      start_period: 45s
 
   frontend:
     build:
@@ -49,14 +53,13 @@ services:
     platform: linux/amd64
     container_name: race-stats-frontend
     ports:
-      - "3001:80"
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - race-stats-network
     labels:
-      # Traefik: route karting.sky-apps.uk:80 to frontend:80
       - "traefik.enable=true"
       - "traefik.http.routers.race-stats-frontend.rule=Host(`karting.sky-apps.uk`)"
       - "traefik.http.routers.race-stats-frontend.entrypoints=web"

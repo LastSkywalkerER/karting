@@ -39,6 +39,8 @@ RUN yarn install --immutable
 
 COPY scrapper/ .
 
+RUN npm rebuild better-sqlite3
+
 RUN yarn build
 
 EXPOSE 3000
