@@ -24,6 +24,8 @@ export class PuppeteerScraper implements IScraperService {
   private lastDataFingerprint: string | null = null;
   private lastDataChangeTime: number | null = null;
   private idleCheckIntervalId: ReturnType<typeof setInterval> | null = null;
+  private idleRefreshAttempted = false;
+  private isRefreshing = false;
 
   constructor(
     private repository: IRaceResultRepository,
@@ -205,18 +207,44 @@ export class PuppeteerScraper implements IScraperService {
   private resetIdleTracking(): void {
     this.lastDataFingerprint = null;
     this.lastDataChangeTime = null;
+    this.idleRefreshAttempted = false;
   }
 
   private startIdleCheck(): void {
     this.stopIdleCheck();
     this.idleCheckIntervalId = setInterval(() => {
+      if (this.isRefreshing) return;
       if (!this.lastDataChangeTime) return;
-      if (Date.now() - this.lastDataChangeTime >= IDLE_STOP_MS) {
-        console.log('[PuppeteerScraper] No data changes for 1 minute, auto-stopping');
-        this.notifyBackendSessionCompleted();
-        this.stop();
+      if (Date.now() - this.lastDataChangeTime < IDLE_STOP_MS) return;
+
+      if (!this.idleRefreshAttempted) {
+        this.idleRefreshAttempted = true;
+        console.log('[PuppeteerScraper] No data changes for 1 minute, refreshing page...');
+        this.performRecoveryRefresh();
+        return;
       }
+
+      console.log('[PuppeteerScraper] No data changes for 1 minute after refresh, auto-stopping');
+      this.notifyBackendSessionCompleted();
+      this.stop();
     }, IDLE_CHECK_INTERVAL_MS);
+  }
+
+  private async performRecoveryRefresh(): Promise<void> {
+    if (!this.page || !this.currentUrl || !this.currentSessionId) return;
+    this.isRefreshing = true;
+    try {
+      await this.navigateToUrl(this.currentUrl, this.currentSessionId);
+      this.idleRefreshAttempted = true;
+      await this.setupMutationObserver(this.currentSessionId);
+      console.log('[PuppeteerScraper] Page refreshed, monitoring for changes...');
+    } catch (err) {
+      console.error('[PuppeteerScraper] Recovery refresh failed:', err);
+      this.notifyBackendSessionCompleted();
+      this.stop();
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   private notifyBackendSessionCompleted(): void {
@@ -242,9 +270,7 @@ export class PuppeteerScraper implements IScraperService {
   }
 
   private fingerprint(results: RaceResultData[]): string {
-    return results
-      .map((r) => `${r.position}|${r.competitorNumber}|${r.laps ?? ''}|${r.lastLapTime ?? ''}`)
-      .join(';');
+    return JSON.stringify(results);
   }
 
   getStatus(): ScraperStatus {
@@ -274,6 +300,7 @@ export class PuppeteerScraper implements IScraperService {
         if (fp !== scraper.lastDataFingerprint) {
           scraper.lastDataFingerprint = fp;
           scraper.lastDataChangeTime = Date.now();
+          scraper.idleRefreshAttempted = false;
         }
 
         const { RaceResultEntity } = await import(
